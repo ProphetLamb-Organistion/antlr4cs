@@ -3,7 +3,9 @@
 
 namespace Antlr4.Codegen.Model.Decl
 {
-    /** {@code public XContext X() { }} */
+    /**
+     * {@code public XContext X() { }}
+     */
     public class ContextRuleGetterDecl : ContextGetterDecl
     {
         public string ctxName;

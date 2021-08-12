@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Dfa;
-using Antlr4.Runtime.Sharpen;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime
 {
@@ -24,7 +24,8 @@ namespace Antlr4.Runtime
                 {
                     continue;
                 }
-                IParserErrorListener parserErrorListener = (IParserErrorListener)listener;
+
+                IParserErrorListener parserErrorListener = (IParserErrorListener) listener;
                 parserErrorListener.ReportAmbiguity(recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs);
             }
         }
@@ -37,7 +38,8 @@ namespace Antlr4.Runtime
                 {
                     continue;
                 }
-                IParserErrorListener parserErrorListener = (IParserErrorListener)listener;
+
+                IParserErrorListener parserErrorListener = (IParserErrorListener) listener;
                 parserErrorListener.ReportAttemptingFullContext(recognizer, dfa, startIndex, stopIndex, conflictingAlts, conflictState);
             }
         }
@@ -50,7 +52,8 @@ namespace Antlr4.Runtime
                 {
                     continue;
                 }
-                IParserErrorListener parserErrorListener = (IParserErrorListener)listener;
+
+                IParserErrorListener parserErrorListener = (IParserErrorListener) listener;
                 parserErrorListener.ReportContextSensitivity(recognizer, dfa, startIndex, stopIndex, prediction, acceptState);
             }
         }

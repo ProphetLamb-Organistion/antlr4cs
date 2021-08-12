@@ -1,18 +1,23 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Utility;
+
 
 namespace Antlr4.Runtime.Atn
 {
     /// <summary>A transition containing a set of values.</summary>
     public class SetTransition : Transition
     {
-        [NotNull]
-        public readonly IntervalSet set;
+        [NotNull] public readonly IntervalSet set;
 
-        public SetTransition([NotNull] ATNState target, [Nullable] IntervalSet set)
+        public SetTransition([NotNull] ATNState target, [AllowNull] IntervalSet set)
             : base(target)
         {
             // TODO (sam): should we really allow null here?
@@ -20,24 +25,13 @@ namespace Antlr4.Runtime.Atn
             {
                 set = IntervalSet.Of(TokenConstants.InvalidType);
             }
+
             this.set = set;
         }
 
-        public override Antlr4.Runtime.Atn.TransitionType TransitionType
-        {
-            get
-            {
-                return Antlr4.Runtime.Atn.TransitionType.Set;
-            }
-        }
+        public override TransitionType TransitionType => TransitionType.Set;
 
-        public override IntervalSet Label
-        {
-            get
-            {
-                return set;
-            }
-        }
+        public override IntervalSet Label => set;
 
         public override bool Matches(int symbol, int minVocabSymbol, int maxVocabSymbol)
         {

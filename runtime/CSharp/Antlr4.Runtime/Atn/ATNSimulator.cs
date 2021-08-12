@@ -3,14 +3,25 @@
 
 using System;
 using System.Collections.Generic;
-using Antlr4.Runtime.Dfa;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Dfa;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Atn
 {
     public abstract class ATNSimulator
     {
+        public const char RuleVariantDelimiter = '$';
+
+        public const string RuleLfVariantMarker = "$lf$";
+
+        public const string RuleNolfVariantMarker = "$nolf$";
+
         [Obsolete(@"Use ATNDeserializer.SerializedVersion instead.")]
         public static readonly int SerializedVersion = ATNDeserializer.SerializedVersion;
 
@@ -18,22 +29,14 @@ namespace Antlr4.Runtime.Atn
         [Obsolete(@"Use ATNDeserializer.CheckCondition(bool) instead.")]
         public static readonly Guid SerializedUuid = ATNDeserializer.SerializedUuid;
 
-        public const char RuleVariantDelimiter = '$';
-
-        public const string RuleLfVariantMarker = "$lf$";
-
-        public const string RuleNolfVariantMarker = "$nolf$";
-
         /// <summary>Must distinguish between missing edge and edge we know leads nowhere</summary>
-        [NotNull]
-        public static readonly DFAState Error =
-            new DFAState(new EmptyEdgeMap<DFAState>(0, -1), new EmptyEdgeMap<DFAState>(0, -1), new ATNConfigSet())
+        [NotNull] public static readonly DFAState Error =
+            new(new EmptyEdgeMap<DFAState>(0, -1), new EmptyEdgeMap<DFAState>(0, -1), new ATNConfigSet())
             {
-                stateNumber = int.MaxValue
+                stateNumber = Int32.MaxValue
             };
 
-        [NotNull]
-        public readonly ATN atn;
+        [NotNull] public readonly ATN atn;
 
         public ATNSimulator([NotNull] ATN atn)
         {
@@ -44,14 +47,14 @@ namespace Antlr4.Runtime.Atn
 
         /// <summary>Clear the DFA cache used by the current instance.</summary>
         /// <remarks>
-        /// Clear the DFA cache used by the current instance. Since the DFA cache may
-        /// be shared by multiple ATN simulators, this method may affect the
-        /// performance (but not accuracy) of other parsers which are being used
-        /// concurrently.
+        ///     Clear the DFA cache used by the current instance. Since the DFA cache may
+        ///     be shared by multiple ATN simulators, this method may affect the
+        ///     performance (but not accuracy) of other parsers which are being used
+        ///     concurrently.
         /// </remarks>
         /// <exception cref="System.NotSupportedException">
-        /// if the current instance does not
-        /// support clearing the DFA.
+        ///     if the current instance does not
+        ///     support clearing the DFA.
         /// </exception>
         /// <since>4.3</since>
         public virtual void ClearDFA()

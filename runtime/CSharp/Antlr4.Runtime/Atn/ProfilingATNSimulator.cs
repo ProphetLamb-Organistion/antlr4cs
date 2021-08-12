@@ -2,49 +2,54 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System;
-using Antlr4.Runtime;
-using Antlr4.Runtime.Dfa;
+using System.Diagnostics;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Dfa;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Atn
 {
     /// <since>4.3</since>
     public class ProfilingATNSimulator : ParserATNSimulator
     {
-        protected internal readonly Antlr4.Runtime.Atn.DecisionInfo[] decisions;
-
-        protected internal int numDecisions;
+        protected internal readonly DecisionInfo[] decisions;
 
         protected internal ITokenStream _input;
 
-        protected internal int _startIndex;
+        protected internal int _llStopIndex;
 
         protected internal int _sllStopIndex;
 
-        protected internal int _llStopIndex;
+        protected internal int _startIndex;
+
+        /// <summary>
+        ///     At the point of LL failover, we record how SLL would resolve the conflict so that
+        ///     we can determine whether or not a decision / input pair is context-sensitive.
+        /// </summary>
+        /// <remarks>
+        ///     At the point of LL failover, we record how SLL would resolve the conflict so that
+        ///     we can determine whether or not a decision / input pair is context-sensitive.
+        ///     If LL gives a different result than SLL's predicted alternative, we have a
+        ///     context sensitivity for sure. The converse is not necessarily true, however.
+        ///     It's possible that after conflict resolution chooses minimum alternatives,
+        ///     SLL could get the same answer as LL. Regardless of whether or not the result indicates
+        ///     an ambiguity, it is not treated as a context sensitivity because LL prediction
+        ///     was not required in order to produce a correct prediction for this decision and input sequence.
+        ///     It may in fact still be a context sensitivity but we don't know by looking at the
+        ///     minimum alternatives for the current input.
+        /// </remarks>
+        protected internal int conflictingAltResolvedBySLL;
 
         protected internal int currentDecision;
 
         protected internal SimulatorState currentState;
 
-        /// <summary>
-        /// At the point of LL failover, we record how SLL would resolve the conflict so that
-        /// we can determine whether or not a decision / input pair is context-sensitive.
-        /// </summary>
-        /// <remarks>
-        /// At the point of LL failover, we record how SLL would resolve the conflict so that
-        /// we can determine whether or not a decision / input pair is context-sensitive.
-        /// If LL gives a different result than SLL's predicted alternative, we have a
-        /// context sensitivity for sure. The converse is not necessarily true, however.
-        /// It's possible that after conflict resolution chooses minimum alternatives,
-        /// SLL could get the same answer as LL. Regardless of whether or not the result indicates
-        /// an ambiguity, it is not treated as a context sensitivity because LL prediction
-        /// was not required in order to produce a correct prediction for this decision and input sequence.
-        /// It may in fact still be a context sensitivity but we don't know by looking at the
-        /// minimum alternatives for the current input.
-        /// </remarks>
-        protected internal int conflictingAltResolvedBySLL;
+        protected internal int numDecisions;
 
         public ProfilingATNSimulator(Parser parser)
             : base(parser, parser.Interpreter.atn)
@@ -52,25 +57,33 @@ namespace Antlr4.Runtime.Atn
             optimize_ll1 = false;
             reportAmbiguities = true;
             numDecisions = atn.decisionToState.Count;
-            decisions = new Antlr4.Runtime.Atn.DecisionInfo[numDecisions];
-            for (int i = 0; i < numDecisions; i++)
+            decisions = new DecisionInfo[numDecisions];
+            for (int i = 0;
+                i < numDecisions;
+                i++)
             {
-                decisions[i] = new Antlr4.Runtime.Atn.DecisionInfo(i);
+                decisions[i] = new DecisionInfo(i);
             }
         }
+
+        public virtual DecisionInfo[] DecisionInfo =>
+            // ---------------------------------------------------------------------
+            decisions;
+
+        public virtual SimulatorState CurrentState => currentState;
 
         public override int AdaptivePredict(ITokenStream input, int decision, ParserRuleContext outerContext)
         {
             try
             {
-                this._input = input;
-                this._startIndex = input.Index;
+                _input = input;
+                _startIndex = input.Index;
                 // it's possible for SLL to reach a conflict state without consuming any input
-                this._sllStopIndex = _startIndex - 1;
-                this._llStopIndex = -1;
-                this.currentDecision = decision;
-                this.currentState = null;
-                this.conflictingAltResolvedBySLL = ATN.InvalidAltNumber;
+                _sllStopIndex = _startIndex - 1;
+                _llStopIndex = -1;
+                currentDecision = decision;
+                currentState = null;
+                conflictingAltResolvedBySLL = ATN.InvalidAltNumber;
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 // expensive but useful info
                 int alt = base.AdaptivePredict(input, decision, outerContext);
@@ -84,6 +97,7 @@ namespace Antlr4.Runtime.Atn
                     decisions[decision].SLL_MaxLook = SLL_k;
                     decisions[decision].SLL_MaxLookEvent = new LookaheadEventInfo(decision, null, alt, input, _startIndex, _sllStopIndex, false);
                 }
+
                 if (_llStopIndex >= 0)
                 {
                     int LL_k = _llStopIndex - _startIndex + 1;
@@ -95,12 +109,13 @@ namespace Antlr4.Runtime.Atn
                         decisions[decision].LL_MaxLookEvent = new LookaheadEventInfo(decision, null, alt, input, _startIndex, _llStopIndex, true);
                     }
                 }
+
                 return alt;
             }
             finally
             {
-                this._input = null;
-                this.currentDecision = -1;
+                _input = null;
+                currentDecision = -1;
             }
         }
 
@@ -126,6 +141,7 @@ namespace Antlr4.Runtime.Atn
                 // no reach on current lookahead symbol. ERROR.
                 decisions[currentDecision].errors.Add(new ErrorInfo(currentDecision, previous, _input, _startIndex, _input.Index));
             }
+
             currentState = reachState;
             return reachState;
         }
@@ -141,6 +157,7 @@ namespace Antlr4.Runtime.Atn
             {
                 _sllStopIndex = _input.Index;
             }
+
             DFAState existingTargetState = base.GetExistingTargetState(previousD, t);
             if (existingTargetState != null)
             {
@@ -155,17 +172,20 @@ namespace Antlr4.Runtime.Atn
                 {
                     decisions[currentDecision].SLL_DFATransitions++;
                 }
+
                 // count only if we transition over a DFA state
                 if (existingTargetState == Error)
                 {
-                    SimulatorState state = new SimulatorState(currentState.outerContext, previousD, currentState.useContext, currentState.remainingOuterContext);
+                    SimulatorState state = new(currentState.outerContext, previousD, currentState.useContext, currentState.remainingOuterContext);
                     decisions[currentDecision].errors.Add(new ErrorInfo(currentDecision, state, _input, _startIndex, _input.Index));
                 }
             }
+
             return existingTargetState;
         }
 
-        protected internal override Tuple<DFAState, ParserRuleContext> ComputeTargetState(DFA dfa, DFAState s, ParserRuleContext remainingGlobalContext, int t, bool useContext, PredictionContextCache contextCache)
+        protected internal override Tuple<DFAState, ParserRuleContext> ComputeTargetState(DFA dfa, DFAState s, ParserRuleContext remainingGlobalContext, int t, bool useContext,
+            PredictionContextCache contextCache)
         {
             Tuple<DFAState, ParserRuleContext> targetState = base.ComputeTargetState(dfa, s, remainingGlobalContext, t, useContext, contextCache);
             if (useContext)
@@ -176,6 +196,7 @@ namespace Antlr4.Runtime.Atn
             {
                 decisions[currentDecision].SLL_ATNTransitions++;
             }
+
             return targetState;
         }
 
@@ -188,6 +209,7 @@ namespace Antlr4.Runtime.Atn
                 int stopIndex = fullContext ? _llStopIndex : _sllStopIndex;
                 decisions[currentDecision].predicateEvals.Add(new PredicateEvalInfo(currentState, currentDecision, _input, _startIndex, stopIndex, pred, result, alt));
             }
+
             return result;
         }
 
@@ -197,6 +219,7 @@ namespace Antlr4.Runtime.Atn
             {
                 decisions[currentDecision].contextSensitivities.Add(new ContextSensitivityInfo(currentDecision, acceptState, _input, startIndex, stopIndex));
             }
+
             base.ReportContextSensitivity(dfa, prediction, acceptState, startIndex, stopIndex);
         }
 
@@ -210,11 +233,13 @@ namespace Antlr4.Runtime.Atn
             {
                 conflictingAltResolvedBySLL = conflictState.s0.configs.RepresentedAlternatives.NextSetBit(0);
             }
+
             decisions[currentDecision].LL_Fallback++;
             base.ReportAttemptingFullContext(dfa, conflictingAlts, conflictState, startIndex, stopIndex);
         }
 
-        protected internal override void ReportAmbiguity([NotNull] DFA dfa, DFAState D, int startIndex, int stopIndex, bool exact, [NotNull] BitSet ambigAlts, [NotNull] ATNConfigSet configs)
+        protected internal override void ReportAmbiguity([NotNull] DFA dfa, DFAState D, int startIndex, int stopIndex, bool exact, [NotNull] BitSet ambigAlts,
+            [NotNull] ATNConfigSet configs)
         {
             int prediction;
             if (ambigAlts != null)
@@ -225,6 +250,7 @@ namespace Antlr4.Runtime.Atn
             {
                 prediction = configs.RepresentedAlternatives.NextSetBit(0);
             }
+
             if (conflictingAltResolvedBySLL != ATN.InvalidAltNumber && prediction != conflictingAltResolvedBySLL)
             {
                 // Even though this is an ambiguity we are reporting, we can
@@ -234,25 +260,9 @@ namespace Antlr4.Runtime.Atn
                 // context sensitivity.
                 decisions[currentDecision].contextSensitivities.Add(new ContextSensitivityInfo(currentDecision, currentState, _input, startIndex, stopIndex));
             }
+
             decisions[currentDecision].ambiguities.Add(new AmbiguityInfo(currentDecision, currentState, ambigAlts, _input, startIndex, stopIndex));
             base.ReportAmbiguity(dfa, D, startIndex, stopIndex, exact, ambigAlts, configs);
-        }
-
-        public virtual Antlr4.Runtime.Atn.DecisionInfo[] DecisionInfo
-        {
-            get
-            {
-                // ---------------------------------------------------------------------
-                return decisions;
-            }
-        }
-
-        public virtual SimulatorState CurrentState
-        {
-            get
-            {
-                return currentState;
-            }
         }
     }
 }

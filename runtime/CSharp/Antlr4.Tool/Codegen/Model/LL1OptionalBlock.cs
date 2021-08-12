@@ -1,15 +1,16 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using Antlr4.Tool.Ast;
-
-    /** An optional block is just an alternative block where the last alternative
-     *  is epsilon. The analysis takes care of adding to the empty alternative.
-     *
-     *  (A | B | C)?
+    /**
+     * An optional block is just an alternative block where the last alternative
+     * is epsilon. The analysis takes care of adding to the empty alternative.
+     * 
+     * (A | B | C)?
      */
     public class LL1OptionalBlock : LL1AltBlock
     {

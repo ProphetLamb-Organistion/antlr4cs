@@ -1,41 +1,44 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Misc;
+using Antlr4.Tool;
+
 namespace Antlr4.Codegen.Model.Decl
 {
-    using System.Collections.Generic;
-    using Antlr4.Misc;
-    using Antlr4.Tool;
-
-    /** This object models the structure holding all of the parameters,
-     *  return values, local variables, and labels associated with a rule.
+    /**
+     * This object models the structure holding all of the parameters,
+     * return values, local variables, and labels associated with a rule.
      */
     public class StructDecl : Decl
     {
+        public OrderedHashSet<Decl> attributeDecls = new();
+
+        [ModelElement] public OrderedHashSet<Decl> attrs = new();
+
+        [ModelElement] public ICollection<AttributeDecl> ctorAttrs;
+
         public string derivedFromName; // rule name or label name
+
+        [ModelElement] public IList<DispatchMethod> dispatchMethods;
+
+        [ModelElement] public IList<OutputModelObject> extensionMembers;
+
+        [ModelElement] public OrderedHashSet<Decl> getters = new();
+
+        [ModelElement] public IList<OutputModelObject> interfaces;
+
         public bool provideCopyFrom;
-        [ModelElement]
-        public OrderedHashSet<Decl> attrs = new OrderedHashSet<Decl>();
-        [ModelElement]
-        public OrderedHashSet<Decl> getters = new OrderedHashSet<Decl>();
-        [ModelElement]
-        public ICollection<AttributeDecl> ctorAttrs;
-        [ModelElement]
-        public IList<DispatchMethod> dispatchMethods;
-        [ModelElement]
-        public IList<OutputModelObject> interfaces;
-        [ModelElement]
-        public IList<OutputModelObject> extensionMembers;
+        public OrderedHashSet<Decl> ruleContextDecls = new();
+        public OrderedHashSet<Decl> ruleContextListDecls = new();
 
         // Track these separately; Go target needs to generate getters/setters
         // Do not make them templates; we only need the Decl object not the ST
         // built from it. Avoids adding args to StructDecl template
-        public OrderedHashSet<Decl> tokenDecls = new OrderedHashSet<Decl>();
-        public OrderedHashSet<Decl> tokenTypeDecls = new OrderedHashSet<Decl>();
-        public OrderedHashSet<Decl> tokenListDecls = new OrderedHashSet<Decl>();
-        public OrderedHashSet<Decl> ruleContextDecls = new OrderedHashSet<Decl>();
-        public OrderedHashSet<Decl> ruleContextListDecls = new OrderedHashSet<Decl>();
-        public OrderedHashSet<Decl> attributeDecls = new OrderedHashSet<Decl>();
+        public OrderedHashSet<Decl> tokenDecls = new();
+        public OrderedHashSet<Decl> tokenListDecls = new();
+        public OrderedHashSet<Decl> tokenTypeDecls = new();
 
         public StructDecl(OutputModelFactory factory, Rule r)
             : base(factory, factory.GetTarget().GetRuleFunctionContextStructName(r))
@@ -56,6 +59,7 @@ namespace Antlr4.Codegen.Model.Decl
                     dispatchMethods.Add(new ListenerDispatchMethod(factory, true));
                     dispatchMethods.Add(new ListenerDispatchMethod(factory, false));
                 }
+
                 if (factory.GetGrammar().tool.gen_visitor)
                 {
                     dispatchMethods.Add(new VisitorDispatchMethod(factory));
@@ -68,9 +72,13 @@ namespace Antlr4.Codegen.Model.Decl
             d.ctx = this;
 
             if (d is ContextGetterDecl)
+            {
                 getters.Add(d);
+            }
             else
+            {
                 attrs.Add(d);
+            }
 
             // add to specific "lists"
             if (d is TokenTypeDecl)
@@ -99,15 +107,17 @@ namespace Antlr4.Codegen.Model.Decl
             }
         }
 
-        public virtual void AddDecl(Attribute a)
+        public virtual void AddDecl(AttributeNode a)
         {
             AddDecl(new AttributeDecl(factory, a));
         }
 
-        public virtual void AddDecls(ICollection<Attribute> attrList)
+        public virtual void AddDecls(ICollection<AttributeNode> attrList)
         {
-            foreach (Attribute a in attrList)
+            foreach (AttributeNode a in attrList)
+            {
                 AddDecl(a);
+            }
         }
 
         public virtual void ImplementInterface(OutputModelObject value)

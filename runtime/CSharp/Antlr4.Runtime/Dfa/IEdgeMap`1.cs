@@ -3,33 +3,28 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
 
 namespace Antlr4.Runtime.Dfa
 {
     /// <author>Sam Harwell</author>
     public interface IEdgeMap<T> : IEnumerable<KeyValuePair<int, T>>
     {
-        int Count
-        {
-            get;
-        }
+        int Count { get; }
 
-        bool IsEmpty
-        {
-            get;
-        }
+        bool IsEmpty { get; }
+
+        T this[int key] { get; }
 
         bool ContainsKey(int key);
 
-        T this[int key]
-        {
-            get;
-        }
-
         [return: NotNull]
-        IEdgeMap<T> Put(int key, [Nullable] T value);
+        IEdgeMap<T> Put(int key, [AllowNull] T value);
 
         [return: NotNull]
         IEdgeMap<T> Remove(int key);

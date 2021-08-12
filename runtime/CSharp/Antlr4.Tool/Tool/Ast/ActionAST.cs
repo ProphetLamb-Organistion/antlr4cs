@@ -1,23 +1,25 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+
 namespace Antlr4.Tool.Ast
 {
-    using System.Collections.Generic;
-    using Antlr.Runtime;
-    using ITree = Antlr.Runtime.Tree.ITree;
-
     public class ActionAST : GrammarASTWithOptions, RuleElementAST
     {
+        public IList<IToken> chunks; // useful for ANTLR IDE developers
+
         // Alt, rule, grammar space
         public AttributeResolver resolver;
-        public IList<IToken> chunks; // useful for ANTLR IDE developers
 
         public ActionAST(ActionAST node)
             : base(node)
         {
-            this.resolver = node.resolver;
-            this.chunks = node.chunks;
+            resolver = node.resolver;
+            chunks = node.chunks;
         }
 
         public ActionAST(IToken t)

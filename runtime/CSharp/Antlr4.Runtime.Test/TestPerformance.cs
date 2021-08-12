@@ -1,36 +1,26 @@
-﻿namespace Antlr4.Runtime.Test
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.Runtime;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Runtime.Dfa;
-    using Antlr4.Runtime.Misc;
-    using Antlr4.Runtime.Tree;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
-    using BitSet = Sharpen.BitSet;
-    using Checksum = Sharpen.Checksum;
-    using CRC32 = Sharpen.CRC32;
-    using Debug = System.Diagnostics.Debug;
-    using DirectoryInfo = System.IO.DirectoryInfo;
-    using File = System.IO.File;
-    using FileInfo = System.IO.FileInfo;
-    using Interlocked = System.Threading.Interlocked;
-    using IOException = System.IO.IOException;
-    using Path = System.IO.Path;
-    using SearchOption = System.IO.SearchOption;
-    using Stopwatch = System.Diagnostics.Stopwatch;
-    using Stream = System.IO.Stream;
-    using StreamReader = System.IO.StreamReader;
-    using Thread = System.Threading.Thread;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Dfa;
+using Antlr4.Runtime.Exceptions;
+using Antlr4.Runtime.Misc;
+using Antlr4.Runtime.Sharpen;
+using Antlr4.Runtime.Tree;
+using Antlr4.Runtime.Utility;
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace Antlr4.Runtime.Test
+{
 #if NET40PLUS
     using System.Collections.Concurrent;
     using System.Threading.Tasks;
     using System.Threading.Tasks.Schedulers;
-    using CancellationToken = System.Threading.CancellationToken;
 #endif
 
     [TestClass]
@@ -41,11 +31,13 @@
          * (environment variable or property defined on the Java command line).
          */
         private static readonly string TOP_PACKAGE = "java.lang";
+
         /**
          * {@code true} to load java files from sub-packages of
          * {@link #TOP_PACKAGE}.
          */
         private static readonly bool RECURSIVE = true;
+
         /**
          * {@code true} to read all source files from disk into memory before
          * starting the parse. The default value is {@code true} to help prevent
@@ -54,6 +46,7 @@
          * otherwise fit into memory.
          */
         private static readonly bool PRELOAD_SOURCES = true;
+
         /**
          * The encoding to use when reading source files.
          */
@@ -66,28 +59,33 @@
          * temporary directory to Java.g4 before compiling.
          */
         private static readonly bool USE_LR_GRAMMAR = true;
+
         /**
          * {@code true} to specify the {@code -Xforce-atn} option when generating
          * the grammar, forcing all decisions in {@code JavaParser} to be handled by
          * {@link ParserATNSimulator#adaptivePredict}.
          */
         private static readonly bool FORCE_ATN = false;
+
         /**
          * {@code true} to specify the {@code -atn} option when generating the
          * grammar. This will cause ANTLR to export the ATN for each decision as a
          * DOT (GraphViz) file.
          */
         private static readonly bool EXPORT_ATN_GRAPHS = true;
+
         /**
          * {@code true} to specify the {@code -XdbgST} option when generating the
          * grammar.
          */
         private static readonly bool DEBUG_TEMPLATES = false;
+
         /**
          * {@code true} to specify the {@code -XdbgSTWait} option when generating the
          * grammar.
          */
         private static readonly bool DEBUG_TEMPLATES_WAIT = DEBUG_TEMPLATES;
+
         /**
          * {@code true} to delete temporary (generated and compiled) files when the
          * test completes.
@@ -105,20 +103,24 @@
          * Parse each file with {@code JavaParser.compilationUnit}.
          */
         private static readonly bool RUN_PARSER = true;
+
         /**
          * {@code true} to use {@link BailErrorStrategy}, {@code false} to use
          * {@link DefaultErrorStrategy}.
          */
         private static readonly bool BAIL_ON_ERROR = false;
+
         /**
          * {@code true} to compute a checksum for verifying consistency across
          * optimizations and multiple passes.
          */
         private static readonly bool COMPUTE_CHECKSUM = true;
+
         /**
          * This value is passed to {@link Parser#setBuildParseTree}.
          */
         private static readonly bool BUILD_PARSE_TREES = false;
+
         /**
          * Use
          * {@link ParseTreeWalker#DEFAULT}{@code .}{@link ParseTreeWalker#walk walk}
@@ -168,6 +170,7 @@
          * source file. Otherwise, a new instance will be created for each file.
          */
         private static readonly bool REUSE_LEXER = false;
+
         /**
          * If {@code true}, a single DFA will be used for lexing which is shared
          * across all threads and files. Otherwise, each file will be lexed with its
@@ -175,12 +178,14 @@
          * clearing its DFA cache before lexing each file.
          */
         private static readonly bool REUSE_LEXER_DFA = true;
+
         /**
          * If {@code true}, a single {@code JavaParser} will be used, and
          * {@link Parser#setInputStream} will be called to initialize it for each
          * source file. Otherwise, a new instance will be created for each file.
          */
         private static readonly bool REUSE_PARSER = false;
+
         /**
          * If {@code true}, a single DFA will be used for parsing which is shared
          * across all threads and files. Otherwise, each file will be parsed with
@@ -188,6 +193,7 @@
          * and clearing its DFA cache before parsing each file.
          */
         private static readonly bool REUSE_PARSER_DFA = true;
+
         /**
          * If {@code true}, the shared lexer and parser are reset after each pass.
          * If {@code false}, all passes after the first will be fully "warmed up",
@@ -196,6 +202,7 @@
          * during the first pass.
          */
         private static readonly bool CLEAR_DFA = false;
+
         /**
          * Total number of passes to make over the source.
          */
@@ -203,9 +210,8 @@
 
         /**
          * Number of parser threads to use.
-         * 
          * <remarks>
-         * This value is ignored for .NET Framework 3.5 and earlier.
+         *     This value is ignored for .NET Framework 3.5 and earlier.
          * </remarks>
          */
         private static readonly int NUMBER_OF_THREADS = 1;
@@ -223,8 +229,8 @@
 
 #if !NET40PLUS
         /// <summary>
-        /// This method is used instead of <see cref="Func{TResult}"/> since the latter is defined in multiple
-        /// assemblies when testing the net20 and net30 targets.
+        ///     This method is used instead of <see cref="Func{TResult}" /> since the latter is defined in multiple
+        ///     assemblies when testing the net20 and net30 targets.
         /// </summary>
         /// <returns></returns>
         private delegate int FutureChecksum();
@@ -235,7 +241,7 @@
         public void compileJdk()
         {
             string jdkSourceRoot = getSourceRoot("JDK");
-            Assert.IsTrue(jdkSourceRoot != null && !string.IsNullOrEmpty(jdkSourceRoot), "The JDK_SOURCE_ROOT environment variable must be set for performance testing.");
+            Assert.IsTrue(jdkSourceRoot != null && !String.IsNullOrEmpty(jdkSourceRoot), "The JDK_SOURCE_ROOT environment variable must be set for performance testing.");
 
             compileJavaParser(USE_LR_GRAMMAR);
             string lexerName = "JavaLexer";
@@ -244,12 +250,12 @@
             string entryPoint = "compilationUnit";
             ParserFactory factory = getParserFactory(lexerName, parserName, listenerName, entryPoint);
 
-            if (!string.IsNullOrEmpty(TOP_PACKAGE))
+            if (!String.IsNullOrEmpty(TOP_PACKAGE))
             {
                 jdkSourceRoot = jdkSourceRoot + '/' + TOP_PACKAGE.Replace('.', '/');
             }
 
-            DirectoryInfo directory = new DirectoryInfo(jdkSourceRoot);
+            DirectoryInfo directory = new(jdkSourceRoot);
             Assert.IsTrue(directory.Exists);
 
             IEnumerable<InputDescriptor> sources = LoadSources(directory, "*.java", RECURSIVE);
@@ -258,7 +264,9 @@
 
             currentPass = 0;
             parse1(factory, sources);
-            for (int i = 0; i < PASSES - 1; i++)
+            for (int i = 0;
+                i < PASSES - 1;
+                i++)
             {
                 currentPass = i + 1;
                 if (CLEAR_DFA)
@@ -273,10 +281,19 @@
                         sharedParsers[0].Atn.ClearDFA();
                     }
 
-                    for (int j = 0; j < sharedLexers.Length; j++)
+                    for (int j = 0;
+                        j < sharedLexers.Length;
+                        j++)
+                    {
                         sharedLexers[j] = null;
-                    for (int j = 0; j < sharedParsers.Length; j++)
+                    }
+
+                    for (int j = 0;
+                        j < sharedParsers.Length;
+                        j++)
+                    {
                         sharedParsers[j] = null;
+                    }
                 }
 
                 parse2(factory, sources);
@@ -307,9 +324,9 @@
 
         public static string getOptionsDescription(string topPackage)
         {
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new();
             builder.Append("Input=");
-            if (string.IsNullOrEmpty(topPackage))
+            if (String.IsNullOrEmpty(topPackage))
             {
                 builder.Append("*");
             }
@@ -346,8 +363,8 @@
         }
 
         /**
-         *  This method is separate from {@link #parse2} so the first pass can be distinguished when analyzing
-         *  profiler results.
+         * This method is separate from {@link #parse2} so the first pass can be distinguished when analyzing
+         * profiler results.
          */
         protected void parse1(ParserFactory factory, IEnumerable<InputDescriptor> sources)
         {
@@ -356,8 +373,8 @@
         }
 
         /**
-         *  This method is separate from {@link #parse1} so the first pass can be distinguished when analyzing
-         *  profiler results.
+         * This method is separate from {@link #parse1} so the first pass can be distinguished when analyzing
+         * profiler results.
          */
         protected void parse2(ParserFactory factory, IEnumerable<InputDescriptor> sources)
         {
@@ -383,7 +400,7 @@
             }
         }
 
-        int configOutputSize = 0;
+        private int configOutputSize;
 
         protected void parseSources(ParserFactory factory, IEnumerable<InputDescriptor> sources)
         {
@@ -410,7 +427,8 @@
                 input.Seek(0);
                 inputSize += input.Size;
 #if NET40PLUS
-                Task<int> futureChecksum = Task.Factory.StartNew<int>(new Callable_1(input, factory, threadIdentifiers).call, CancellationToken.None, TaskCreationOptions.None, executorService);
+                Task<int> futureChecksum =
+ Task.Factory.StartNew<int>(new Callable_1(input, factory, threadIdentifiers).call, CancellationToken.None, TaskCreationOptions.None, executorService);
 #else
                 FutureChecksum futureChecksum = new Callable_1(input, factory).call;
 #endif
@@ -418,7 +436,7 @@
             }
 
             Checksum checksum = new CRC32();
-            foreach (var future in results)
+            foreach (FutureChecksum future in results)
             {
 #if NET40PLUS
                 int value = future.Result;
@@ -436,11 +454,11 @@
 #endif
 
             Console.Out.WriteLine("Total parse time for {0} files ({1} KB, {2} tokens, checksum 0x{3:X8}): {4}ms",
-                              sourceCount,
-                              inputSize / 1024,
-                              Thread.VolatileRead(ref tokenCount),
-                              COMPUTE_CHECKSUM ? checksum.Value : 0,
-                              startTime.ElapsedMilliseconds);
+                sourceCount,
+                inputSize / 1024,
+                Thread.VolatileRead(ref tokenCount),
+                COMPUTE_CHECKSUM ? checksum.Value : 0,
+                startTime.ElapsedMilliseconds);
 
             if (sharedLexers.Length > 0)
             {
@@ -451,9 +469,11 @@
                 {
                     int states = 0;
                     int configs = 0;
-                    ATNConfigHashSet uniqueConfigs = new ATNConfigHashSet();
+                    ATNConfigHashSet uniqueConfigs = new();
 
-                    for (int i = 0; i < modeToDFA.Length; i++)
+                    for (int i = 0;
+                        i < modeToDFA.Length;
+                        i++)
                     {
                         DFA dfa = modeToDFA[i];
                         if (dfa == null || dfa.states == null)
@@ -469,7 +489,8 @@
                         }
                     }
 
-                    Console.Out.WriteLine("There are {0} lexer DFAState instances, {1} configs ({2} unique), {3} prediction contexts.", states, configs, uniqueConfigs.Count, lexerInterpreter.atn.ContextCacheSize);
+                    Console.Out.WriteLine("There are {0} lexer DFAState instances, {1} configs ({2} unique), {3} prediction contexts.", states, configs, uniqueConfigs.Count,
+                        lexerInterpreter.atn.ContextCacheSize);
                 }
             }
 
@@ -484,9 +505,11 @@
                 {
                     int states = 0;
                     int configs = 0;
-                    ATNConfigHashSet uniqueConfigs = new ATNConfigHashSet();
+                    ATNConfigHashSet uniqueConfigs = new();
 
-                    for (int i = 0; i < decisionToDFA.Length; i++)
+                    for (int i = 0;
+                        i < decisionToDFA.Length;
+                        i++)
                     {
                         DFA dfa = decisionToDFA[i];
                         if (dfa == null || dfa.states == null)
@@ -502,7 +525,8 @@
                         }
                     }
 
-                    Console.Out.WriteLine("There are {0} parser DFAState instances, {1} configs ({2} unique), {3} prediction contexts.", states, configs, uniqueConfigs.Count, interpreter.atn.ContextCacheSize);
+                    Console.Out.WriteLine("There are {0} parser DFAState instances, {1} configs ({2} unique), {3} prediction contexts.", states, configs, uniqueConfigs.Count,
+                        interpreter.atn.ContextCacheSize);
                 }
 
                 int localDfaCount = 0;
@@ -511,7 +535,9 @@
                 int globalConfigCount = 0;
                 int[] contextsInDFAState = new int[0];
 
-                for (int i = 0; i < decisionToDFA.Length; i++)
+                for (int i = 0;
+                    i < decisionToDFA.Length;
+                    i++)
                 {
                     DFA dfa = decisionToDFA[i];
                     if (dfa == null || dfa.states == null)
@@ -579,11 +605,14 @@
 
                 if (SHOW_CONFIG_STATS && currentPass == 0)
                 {
-                    Console.Out.WriteLine("  DFA accept states: {0} total, {1} with only local context, {2} with a global context", localDfaCount + globalDfaCount, localDfaCount, globalDfaCount);
+                    Console.Out.WriteLine("  DFA accept states: {0} total, {1} with only local context, {2} with a global context", localDfaCount + globalDfaCount, localDfaCount,
+                        globalDfaCount);
                     Console.Out.WriteLine("  Config stats: {0} total, {1} local, {2} global", localConfigCount + globalConfigCount, localConfigCount, globalConfigCount);
                     if (SHOW_DFA_STATE_STATS)
                     {
-                        for (int i = 0; i < contextsInDFAState.Length; i++)
+                        for (int i = 0;
+                            i < contextsInDFAState.Length;
+                            i++)
                         {
                             if (contextsInDFAState[i] != 0)
                             {
@@ -625,16 +654,7 @@
 #else
                 int threadNumber = 0;
 #endif
-                try
-                {
-                    return factory.parseFile(input, threadNumber);
-                }
-                finally
-                {
-#if NET40PLUS
-                    threadNumbers.Add(threadNumber);
-#endif
-                }
+                return factory.parseFile(input, threadNumber);
             }
         }
 
@@ -643,16 +663,18 @@
             string grammarFileName = "Java.g4";
             string sourceName = leftRecursive ? "Java-LR.g4" : "Java.g4";
             string body = load(sourceName, null);
-            List<string> extraOptions = new List<string>();
+            var extraOptions = new List<string>();
             extraOptions.Add("-Werror");
             if (FORCE_ATN)
             {
                 extraOptions.Add("-Xforce-atn");
             }
+
             if (EXPORT_ATN_GRAPHS)
             {
                 extraOptions.Add("-atn");
             }
+
             if (DEBUG_TEMPLATES)
             {
                 extraOptions.Add("-XdbgST");
@@ -661,13 +683,14 @@
                     extraOptions.Add("-XdbgSTWait");
                 }
             }
+
             extraOptions.Add("-visitor");
             string[] extraOptionsArray = extraOptions.ToArray();
             bool success = rawGenerateAndBuildRecognizer(grammarFileName, body, "JavaParser", "JavaLexer", true, extraOptionsArray);
             Assert.IsTrue(success);
         }
 
-        protected string load(string fileName, [Nullable] Encoding encoding)
+        protected string load(string fileName, [AllowNull] Encoding encoding)
         {
             if (fileName == null)
             {
@@ -676,17 +699,19 @@
 
             Stream stream = typeof(TestPerformance).Assembly.GetManifestResourceStream(typeof(TestPerformance), fileName);
             if (encoding == null)
+            {
                 return new StreamReader(stream).ReadToEnd();
-            else
-                return new StreamReader(stream, encoding).ReadToEnd();
+            }
+
+            return new StreamReader(stream, encoding).ReadToEnd();
         }
 
         private static void updateChecksum(Checksum checksum, int value)
         {
-            checksum.Update((value) & 0xFF);
-            checksum.Update((int)((uint)value >> 8) & 0xFF);
-            checksum.Update((int)((uint)value >> 16) & 0xFF);
-            checksum.Update((int)((uint)value >> 24) & 0xFF);
+            checksum.Update(value & 0xFF);
+            checksum.Update((int) ((uint) value >> 8) & 0xFF);
+            checksum.Update((int) ((uint) value >> 16) & 0xFF);
+            checksum.Update((int) ((uint) value >> 24) & 0xFF);
         }
 
         private static void updateChecksum(Checksum checksum, IToken token)
@@ -712,18 +737,20 @@
             Type parserClass = loader.GetType(parserName);
             Type listenerClass = loader.GetType(listenerName);
 
-            ConstructorInfo lexerCtor = lexerClass.GetConstructor(new Type[] { typeof(ICharStream) });
-            ConstructorInfo parserCtor = parserClass.GetConstructor(new Type[] { typeof(ITokenStream) });
+            ConstructorInfo lexerCtor = lexerClass.GetConstructor(new[] {typeof(ICharStream)});
+            ConstructorInfo parserCtor = parserClass.GetConstructor(new[] {typeof(ITokenStream)});
 
             // construct initial instances of the lexer and parser to deserialize their ATNs
-            ITokenSource tokenSource = (ITokenSource)lexerCtor.Invoke(new object[] { new AntlrInputStream("") });
-            parserCtor.Invoke(new object[] { new CommonTokenStream(tokenSource) });
+            ITokenSource tokenSource = (ITokenSource) lexerCtor.Invoke(new object[] {new AntlrInputStream("")});
+            parserCtor.Invoke(new object[] {new CommonTokenStream(tokenSource)});
 
             if (!REUSE_LEXER_DFA)
             {
                 FieldInfo lexerSerializedATNField = lexerClass.GetField("_serializedATN");
-                string lexerSerializedATN = (string)lexerSerializedATNField.GetValue(null);
-                for (int i = 0; i < NUMBER_OF_THREADS; i++)
+                string lexerSerializedATN = (string) lexerSerializedATNField.GetValue(null);
+                for (int i = 0;
+                    i < NUMBER_OF_THREADS;
+                    i++)
                 {
                     sharedLexerATNs[i] = new ATNDeserializer().Deserialize(lexerSerializedATN.ToCharArray());
                 }
@@ -732,8 +759,10 @@
             if (RUN_PARSER && !REUSE_PARSER_DFA)
             {
                 FieldInfo parserSerializedATNField = parserClass.GetField("_serializedATN");
-                string parserSerializedATN = (string)parserSerializedATNField.GetValue(null);
-                for (int i = 0; i < NUMBER_OF_THREADS; i++)
+                string parserSerializedATN = (string) parserSerializedATNField.GetValue(null);
+                for (int i = 0;
+                    i < NUMBER_OF_THREADS;
+                    i++)
                 {
                     sharedParserATNs[i] = new ATNDeserializer().Deserialize(parserSerializedATN.ToCharArray());
                 }
@@ -744,13 +773,12 @@
 
         private class ParserFactory_1 : ParserFactory
         {
-            private readonly Type listenerClass;
-            private readonly Type parserClass;
+            private readonly string entryPoint;
 
             private readonly ConstructorInfo lexerCtor;
+            private readonly Type listenerClass;
+            private readonly Type parserClass;
             private readonly ConstructorInfo parserCtor;
-
-            private readonly string entryPoint;
 
             public ParserFactory_1(Type listenerClass, Type parserClass, ConstructorInfo lexerCtor, ConstructorInfo parserCtor, string entryPoint)
             {
@@ -772,7 +800,7 @@
                     IParseTreeListener listener = sharedListeners[thread];
                     if (listener == null)
                     {
-                        listener = (IParseTreeListener)Activator.CreateInstance(listenerClass);
+                        listener = (IParseTreeListener) Activator.CreateInstance(listenerClass);
                         sharedListeners[thread] = listener;
                     }
 
@@ -783,7 +811,7 @@
                     }
                     else
                     {
-                        lexer = (Lexer)lexerCtor.Invoke(new object[] { input });
+                        lexer = (Lexer) lexerCtor.Invoke(new object[] {input});
                         sharedLexers[thread] = lexer;
                         if (!ENABLE_LEXER_DFA)
                         {
@@ -801,7 +829,7 @@
                         lexer.Interpreter.atn.ClearDFA();
                     }
 
-                    CommonTokenStream tokens = new CommonTokenStream(lexer);
+                    CommonTokenStream tokens = new(lexer);
                     tokens.Fill();
                     Interlocked.Add(ref tokenCount, tokens.Size);
 
@@ -815,7 +843,7 @@
 
                     if (!RUN_PARSER)
                     {
-                        return (int)checksum.Value;
+                        return (int) checksum.Value;
                     }
 
                     Parser parser = sharedParsers[thread];
@@ -825,7 +853,7 @@
                     }
                     else
                     {
-                        Parser newParser = (Parser)parserCtor.Invoke(new object[] { tokens });
+                        Parser newParser = (Parser) parserCtor.Invoke(new object[] {tokens});
                         parser = newParser;
                         sharedParsers[thread] = parser;
                     }
@@ -864,6 +892,7 @@
                     {
                         parser.AddParseListener(listener);
                     }
+
                     if (BAIL_ON_ERROR || TWO_STAGE_PARSING)
                     {
                         parser.ErrorHandler = new BailErrorStrategy();
@@ -881,6 +910,7 @@
                             checksumParserListener = new ChecksumParseTreeListener(checksum);
                             parser.AddParseListener(checksumParserListener);
                         }
+
                         parseResult = parseMethod.Invoke(parser, null);
                     }
                     catch (TargetInvocationException ex)
@@ -891,7 +921,7 @@
                         }
 
                         string sourceName = tokens.SourceName;
-                        sourceName = !string.IsNullOrEmpty(sourceName) ? sourceName + ": " : "";
+                        sourceName = !String.IsNullOrEmpty(sourceName) ? sourceName + ": " : "";
                         Console.Error.WriteLine(sourceName + "Forced to retry with full context.");
 
                         if (!(ex.InnerException is ParseCanceledException))
@@ -906,7 +936,7 @@
                         }
                         else
                         {
-                            Parser newParser = (Parser)parserCtor.Invoke(new object[] { tokens });
+                            Parser newParser = (Parser) parserCtor.Invoke(new object[] {tokens});
                             parser = newParser;
                             sharedParsers[thread] = parser;
                         }
@@ -918,6 +948,7 @@
                         {
                             parser.Interpreter = new NonCachingParserATNSimulator(parser, parser.Atn);
                         }
+
                         parser.Interpreter.PredictionMode = PREDICTION_MODE;
                         parser.Interpreter.force_global_context = FORCE_GLOBAL_CONTEXT;
                         parser.Interpreter.always_try_local_context = TRY_LOCAL_CONTEXT_FIRST;
@@ -931,6 +962,7 @@
                         {
                             parser.AddParseListener(listener);
                         }
+
                         if (BAIL_ON_ERROR)
                         {
                             parser.ErrorHandler = new BailErrorStrategy();
@@ -949,20 +981,20 @@
                     Assert.IsInstanceOfType(parseResult, typeof(IParseTree));
                     if (BUILD_PARSE_TREES && BLANK_LISTENER)
                     {
-                        ParseTreeWalker.Default.Walk(listener, (ParserRuleContext)parseResult);
+                        ParseTreeWalker.Default.Walk(listener, (ParserRuleContext) parseResult);
                     }
                 }
                 catch (Exception e)
                 {
                     if (!REPORT_SYNTAX_ERRORS && e is ParseCanceledException)
                     {
-                        return (int)checksum.Value;
+                        return (int) checksum.Value;
                     }
 
                     throw;
                 }
 
-                return (int)checksum.Value;
+                return (int) checksum.Value;
             }
         }
 
@@ -973,7 +1005,7 @@
 
         private class DescriptiveErrorListener : BaseErrorListener
         {
-            public static DescriptiveErrorListener INSTANCE = new DescriptiveErrorListener();
+            public static readonly DescriptiveErrorListener INSTANCE = new();
 
             public override void SyntaxError(IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
             {
@@ -983,9 +1015,9 @@
                 }
 
                 string sourceName = recognizer.InputStream.SourceName;
-                if (!string.IsNullOrEmpty(sourceName))
+                if (!String.IsNullOrEmpty(sourceName))
                 {
-                    sourceName = string.Format("{0}:{1}:{2}: ", sourceName, line, charPositionInLine);
+                    sourceName = $"{sourceName}:{line}:{charPositionInLine}: ";
                 }
 
                 Console.Error.WriteLine(sourceName + "line " + line + ":" + charPositionInLine + " " + msg);
@@ -1026,9 +1058,8 @@
 
             protected override string GetDecisionDescription(Parser recognizer, DFA dfa)
             {
-                string format = "{0}({1})";
                 string ruleName = recognizer.RuleNames[recognizer.Atn.decisionToState[dfa.decision].ruleIndex];
-                return string.Format(format, dfa.decision, ruleName);
+                return $"{dfa.decision}({ruleName})";
             }
         }
 
@@ -1047,7 +1078,7 @@
 
         protected class NonCachingParserATNSimulator : ParserATNSimulator
         {
-            private static readonly EmptyEdgeMap<DFAState> emptyMap = new EmptyEdgeMap<DFAState>(-1, -1);
+            private static readonly EmptyEdgeMap<DFAState> emptyMap = new(-1, -1);
 
             public NonCachingParserATNSimulator(Parser parser, ATN atn)
                 : base(parser, atn)
@@ -1108,7 +1139,7 @@
             private WeakReference<CloneableAntlrFileStream> inputStream;
             private CloneableAntlrFileStream strongInputStream;
 
-            public InputDescriptor([NotNull] String source)
+            public InputDescriptor([NotNull] string source)
             {
                 this.source = source;
                 if (PRELOAD_SOURCES)
@@ -1149,16 +1180,14 @@
                     stream = strongInputStream;
                     return strongInputStream != null;
                 }
-                else
-                {
-                    if (inputStream == null)
-                    {
-                        stream = null;
-                        return false;
-                    }
 
-                    return inputStream.TryGetTarget(out stream);
+                if (inputStream == null)
+                {
+                    stream = null;
+                    return false;
                 }
+
+                return inputStream.TryGetTarget(out stream);
             }
         }
 
@@ -1168,7 +1197,7 @@
         protected class CloneableAntlrFileStream : AntlrFileStream
 #endif
         {
-            public CloneableAntlrFileStream(String fileName, Encoding encoding)
+            public CloneableAntlrFileStream(string fileName, Encoding encoding)
 #if PORTABLE
                 : base(File.ReadAllText(fileName, encoding))
 #else
@@ -1179,8 +1208,8 @@
 
             public AntlrInputStream CreateCopy()
             {
-                AntlrInputStream stream = new AntlrInputStream(this.data, this.n);
-                stream.name = this.SourceName;
+                AntlrInputStream stream = new(data, n);
+                stream.name = SourceName;
                 return stream;
             }
         }
@@ -1213,11 +1242,13 @@
         {
             internal void UnionWith(ATNConfigSet configs)
             {
-                foreach (var config in configs)
+                foreach (ATNConfig config in configs)
                 {
                     bool existing;
                     if (!TryGetValue(config, out existing))
+                    {
                         this[config] = true;
+                    }
                 }
             }
         }

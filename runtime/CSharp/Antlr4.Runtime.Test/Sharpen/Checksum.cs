@@ -2,10 +2,7 @@
 {
     internal interface Checksum
     {
-        long Value
-        {
-            get;
-        }
+        long Value { get; }
 
         void Reset();
 

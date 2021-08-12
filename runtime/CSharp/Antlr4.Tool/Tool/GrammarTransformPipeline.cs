@@ -1,22 +1,20 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Antlr4.Analysis;
+using Antlr4.Parse;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Tool
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using Antlr4.Analysis;
-    using Antlr4.Parse;
-    using Antlr4.Tool.Ast;
-    using CommonToken = Antlr.Runtime.CommonToken;
-    using CommonTree = Antlr.Runtime.Tree.CommonTree;
-    using CommonTreeNodeStream = Antlr.Runtime.Tree.CommonTreeNodeStream;
-    using ITree = Antlr.Runtime.Tree.ITree;
-    using TreeVisitor = Antlr.Runtime.Tree.TreeVisitor;
-    using TreeVisitorAction = Antlr.Runtime.Tree.TreeVisitorAction;
-    using Tuple = System.Tuple;
-
-    /** Handle left-recursion and block-set transforms */
+    /**
+     * Handle left-recursion and block-set transforms
+     */
     public class GrammarTransformPipeline
     {
         public Grammar g;
@@ -32,7 +30,10 @@ namespace Antlr4.Tool
         {
             GrammarRootAST root = g.ast;
             if (root == null)
+            {
                 return;
+            }
+
             tool.Log("grammar", "before: " + root.ToStringTree());
 
             IntegrateImportedGrammars(g);
@@ -44,31 +45,33 @@ namespace Antlr4.Tool
 
         public virtual void ReduceBlocksToSets(GrammarAST root)
         {
-            CommonTreeNodeStream nodes = new CommonTreeNodeStream(new GrammarASTAdaptor(), root);
-            GrammarASTAdaptor adaptor = new GrammarASTAdaptor();
+            CommonTreeNodeStream nodes = new(new GrammarASTAdaptor(), root);
+            GrammarASTAdaptor adaptor = new();
             BlockSetTransformer transformer = new BlockSetTransformer(nodes, g);
             transformer.TreeAdaptor = adaptor;
             transformer.Downup(root);
         }
 
-        /** Find and replace
-         *      ID*[','] with ID (',' ID)*
-         *      ID+[','] with ID (',' ID)+
-         *      (x {action} y)+[','] with x {action} y (',' x {action} y)+
-         *
-         *  Parameter must be a token.
-         *  todo: do we want?
+        /**
+         * Find and replace
+         * ID*[','] with ID (',' ID)*
+         * ID+[','] with ID (',' ID)+
+         * (x {action} y)+[','] with x {action} y (',' x {action} y)+
+         * 
+         * Parameter must be a token.
+         * todo: do we want?
          */
         public virtual void ExpandParameterizedLoops(GrammarAST root)
         {
-            TreeVisitor v = new TreeVisitor(new GrammarASTAdaptor());
+            TreeVisitor v = new(new GrammarASTAdaptor());
             Antlr.Runtime.Misc.Func<object, object> preAction =
                 t =>
                 {
-                    if (((GrammarAST)t).Type == 3)
+                    if (((GrammarAST) t).Type == 3)
                     {
-                        return ExpandParameterizedLoop((GrammarAST)t);
+                        return ExpandParameterizedLoop((GrammarAST) t);
                     }
+
                     return t;
                 };
             Antlr.Runtime.Misc.Func<object, object> postAction = t => t;
@@ -81,40 +84,49 @@ namespace Antlr4.Tool
             return t;
         }
 
-        /** Utility visitor that sets grammar ptr in each node */
+        /**
+         * Utility visitor that sets grammar ptr in each node
+         */
         public static void SetGrammarPtr(Grammar g, GrammarAST tree)
         {
             if (tree == null)
+            {
                 return;
+            }
+
             // ensure each node has pointer to surrounding grammar
             Antlr.Runtime.Misc.Func<object, object> preAction =
                 t =>
                 {
-                    ((GrammarAST)t).g = g;
+                    ((GrammarAST) t).g = g;
                     return t;
                 };
             Antlr.Runtime.Misc.Func<object, object> postAction = t => t;
-            TreeVisitor v = new TreeVisitor(new GrammarASTAdaptor());
+            TreeVisitor v = new(new GrammarASTAdaptor());
             v.Visit(tree, new TreeVisitorAction(preAction, postAction));
         }
 
         public static void AugmentTokensWithOriginalPosition(Grammar g, GrammarAST tree)
         {
             if (tree == null)
+            {
                 return;
+            }
 
             IList<GrammarAST> optionsSubTrees = tree.GetNodesWithType(ANTLRParser.ELEMENT_OPTIONS);
-            for (int i = 0; i < optionsSubTrees.Count; i++)
+            for (int i = 0;
+                i < optionsSubTrees.Count;
+                i++)
             {
                 GrammarAST t = optionsSubTrees[i];
-                CommonTree elWithOpt = (CommonTree)t.Parent;
+                CommonTree elWithOpt = (CommonTree) t.Parent;
                 if (elWithOpt is GrammarASTWithOptions)
                 {
-                    IDictionary<string, GrammarAST> options = ((GrammarASTWithOptions)elWithOpt).GetOptions();
+                    IDictionary<string, GrammarAST> options = ((GrammarASTWithOptions) elWithOpt).GetOptions();
                     if (options.ContainsKey(LeftRecursiveRuleTransformer.TOKENINDEX_OPTION_NAME))
                     {
-                        GrammarToken newTok = new GrammarToken(g, elWithOpt.Token);
-                        newTok.originalTokenIndex = int.Parse(options[LeftRecursiveRuleTransformer.TOKENINDEX_OPTION_NAME].Text);
+                        GrammarToken newTok = new(g, elWithOpt.Token);
+                        newTok.originalTokenIndex = Int32.Parse(options[LeftRecursiveRuleTransformer.TOKENINDEX_OPTION_NAME].Text);
                         elWithOpt.Token = newTok;
 
                         GrammarAST originalNode = g.ast.GetNodeWithTokenIndex(newTok.TokenIndex);
@@ -138,55 +150,61 @@ namespace Antlr4.Tool
             }
         }
 
-        /** Merge all the rules, token definitions, and named actions from
-            imported grammars into the root grammar tree.  Perform:
-
-            (tokens { X (= Y 'y')) + (tokens { Z )	-&gt;	(tokens { X (= Y 'y') Z)
-
-            (@ members {foo}) + (@ members {bar})	-&gt;	(@ members {foobar})
-
-            (RULES (RULE x y)) + (RULES (RULE z))	-&gt;	(RULES (RULE x y z))
-
-            Rules in root prevent same rule from being appended to RULES node.
-
-            The goal is a complete combined grammar so we can ignore subordinate
-            grammars.
+        /**
+         * Merge all the rules, token definitions, and named actions from
+         * imported grammars into the root grammar tree.  Perform:
+         * 
+         * (tokens { X (= Y 'y')) + (tokens { Z )	-&gt;	(tokens { X (= Y 'y') Z)
+         * 
+         * (@ members {foo}) + (@ members {bar})	-&gt;	(@ members {foobar})
+         * 
+         * (RULES (RULE x y)) + (RULES (RULE z))	-&gt;	(RULES (RULE x y z))
+         * 
+         * Rules in root prevent same rule from being appended to RULES node.
+         * 
+         * The goal is a complete combined grammar so we can ignore subordinate
+         * grammars.
          */
         public virtual void IntegrateImportedGrammars(Grammar rootGrammar)
         {
             IList<Grammar> imports = rootGrammar.GetAllImportedGrammars();
             if (imports == null)
+            {
                 return;
+            }
 
             GrammarAST root = rootGrammar.ast;
-            GrammarAST id = (GrammarAST)root.GetChild(0);
-            GrammarASTAdaptor adaptor = new GrammarASTAdaptor(id.Token.InputStream);
+            GrammarAST id = (GrammarAST) root.GetChild(0);
+            GrammarASTAdaptor adaptor = new(id.Token.InputStream);
 
-            GrammarAST tokensRoot = (GrammarAST)root.GetFirstChildWithType(ANTLRParser.TOKENS_SPEC);
+            GrammarAST tokensRoot = (GrammarAST) root.GetFirstChildWithType(ANTLRParser.TOKENS_SPEC);
 
             IList<GrammarAST> actionRoots = root.GetNodesWithType(ANTLRParser.AT);
 
             // Compute list of rules in root grammar and ensure we have a RULES node
-            GrammarAST RULES = (GrammarAST)root.GetFirstChildWithType(ANTLRParser.RULES);
+            GrammarAST RULES = (GrammarAST) root.GetFirstChildWithType(ANTLRParser.RULES);
             ISet<string> rootRuleNames = new HashSet<string>();
             // make list of rules we have in root grammar
             IList<GrammarAST> rootRules = RULES.GetNodesWithType(ANTLRParser.RULE);
             foreach (GrammarAST r in rootRules)
+            {
                 rootRuleNames.Add(r.GetChild(0).Text);
+            }
 
             foreach (Grammar imp in imports)
             {
                 // COPY TOKENS
-                GrammarAST imp_tokensRoot = (GrammarAST)imp.ast.GetFirstChildWithType(ANTLRParser.TOKENS_SPEC);
+                GrammarAST imp_tokensRoot = (GrammarAST) imp.ast.GetFirstChildWithType(ANTLRParser.TOKENS_SPEC);
                 if (imp_tokensRoot != null)
                 {
                     rootGrammar.tool.Log("grammar", "imported tokens: " + imp_tokensRoot.Children);
                     if (tokensRoot == null)
                     {
-                        tokensRoot = (GrammarAST)adaptor.Create(ANTLRParser.TOKENS_SPEC, "TOKENS");
+                        tokensRoot = (GrammarAST) adaptor.Create(ANTLRParser.TOKENS_SPEC, "TOKENS");
                         tokensRoot.g = rootGrammar;
                         root.InsertChild(1, tokensRoot); // ^(GRAMMAR ID TOKENS...)
                     }
+
                     tokensRoot.AddChildren(imp_tokensRoot.Children);
                 }
 
@@ -194,18 +212,22 @@ namespace Antlr4.Tool
                 IList<GrammarAST> imp_actionRoots = imp.ast.GetAllChildrenWithType(ANTLRParser.AT);
                 if (actionRoots != null)
                 {
-                    foreach (var actionRoot in actionRoots)
+                    foreach (GrammarAST actionRoot in actionRoots)
+                    {
                         all_actionRoots.Add(actionRoot);
+                    }
                 }
 
-                foreach (var actionRoot in imp_actionRoots)
+                foreach (GrammarAST actionRoot in imp_actionRoots)
+                {
                     all_actionRoots.Add(actionRoot);
+                }
 
                 // COPY ACTIONS
                 if (imp_actionRoots != null)
                 {
-                    IDictionary<System.Tuple<string, string>, GrammarAST> namedActions =
-                        new Dictionary<System.Tuple<string, string>, GrammarAST>();
+                    IDictionary<Tuple<string, string>, GrammarAST> namedActions =
+                        new Dictionary<Tuple<string, string>, GrammarAST>();
 
                     rootGrammar.tool.Log("grammar", "imported actions: " + imp_actionRoots);
                     foreach (GrammarAST at in all_actionRoots)
@@ -213,17 +235,19 @@ namespace Antlr4.Tool
                         string scopeName = rootGrammar.GetDefaultActionScope();
                         GrammarAST scope, name, action;
                         if (at.ChildCount > 2)
-                        { // must have a scope
-                            scope = (GrammarAST)at.GetChild(0);
+                        {
+                            // must have a scope
+                            scope = (GrammarAST) at.GetChild(0);
                             scopeName = scope.Text;
-                            name = (GrammarAST)at.GetChild(1);
-                            action = (GrammarAST)at.GetChild(2);
+                            name = (GrammarAST) at.GetChild(1);
+                            action = (GrammarAST) at.GetChild(2);
                         }
                         else
                         {
-                            name = (GrammarAST)at.GetChild(0);
-                            action = (GrammarAST)at.GetChild(1);
+                            name = (GrammarAST) at.GetChild(0);
+                            action = (GrammarAST) at.GetChild(1);
                         }
+
                         GrammarAST prevAction;
                         if (!namedActions.TryGetValue(Tuple.Create(scopeName, name.Text), out prevAction) || prevAction == null)
                         {
@@ -234,7 +258,7 @@ namespace Antlr4.Tool
                             if (prevAction.g == at.g)
                             {
                                 rootGrammar.tool.errMgr.GrammarError(ErrorType.ACTION_REDEFINITION,
-                                                    at.g.fileName, name.Token, name.Text);
+                                    at.g.fileName, name.Token, name.Text);
                             }
                             else
                             {
@@ -247,6 +271,7 @@ namespace Antlr4.Tool
                             }
                         }
                     }
+
                     // at this point, we have complete list of combined actions,
                     // some of which are already living in root grammar.
                     // Merge in any actions not in root grammar into root's tree.
@@ -281,7 +306,7 @@ namespace Antlr4.Tool
                     }
                 }
 
-                GrammarAST optionsRoot = (GrammarAST)imp.ast.GetFirstChildWithType(ANTLRParser.OPTIONS);
+                GrammarAST optionsRoot = (GrammarAST) imp.ast.GetFirstChildWithType(ANTLRParser.OPTIONS);
                 if (optionsRoot != null)
                 {
                     // suppress the warning if the options match the options specified
@@ -308,62 +333,64 @@ namespace Antlr4.Tool
                     if (hasNewOption)
                     {
                         rootGrammar.tool.errMgr.GrammarError(ErrorType.OPTIONS_IN_DELEGATE,
-                                            optionsRoot.g.fileName, optionsRoot.Token, imp.name);
+                            optionsRoot.g.fileName, optionsRoot.Token, imp.name);
                     }
                 }
             }
+
             rootGrammar.tool.Log("grammar", "Grammar: " + rootGrammar.ast.ToStringTree());
         }
 
-        /** Build lexer grammar from combined grammar that looks like:
-         *
-         *  (COMBINED_GRAMMAR A
-         *      (tokens { X (= Y 'y'))
-         *      (OPTIONS (= x 'y'))
-         *      (@ members {foo})
-         *      (@ lexer header {package jj;})
-         *      (RULES (RULE .+)))
-         *
-         *  Move rules and actions to new tree, don't dup. Split AST apart.
-         *  We'll have this Grammar share token symbols later; don't generate
-         *  tokenVocab or tokens{} section.  Copy over named actions.
-         *
-         *  Side-effects: it removes children from GRAMMAR &amp; RULES nodes
-         *                in combined AST.  Anything cut out is dup'd before
-         *                adding to lexer to avoid "who's ur daddy" issues
+        /**
+         * Build lexer grammar from combined grammar that looks like:
+         * 
+         * (COMBINED_GRAMMAR A
+         * (tokens { X (= Y 'y'))
+         * (OPTIONS (= x 'y'))
+         * (@ members {foo})
+         * (@ lexer header {package jj;})
+         * (RULES (RULE .+)))
+         * 
+         * Move rules and actions to new tree, don't dup. Split AST apart.
+         * We'll have this Grammar share token symbols later; don't generate
+         * tokenVocab or tokens{} section.  Copy over named actions.
+         * 
+         * Side-effects: it removes children from GRAMMAR &amp; RULES nodes
+         * in combined AST.  Anything cut out is dup'd before
+         * adding to lexer to avoid "who's ur daddy" issues
          */
         public virtual GrammarRootAST ExtractImplicitLexer(Grammar combinedGrammar)
         {
             GrammarRootAST combinedAST = combinedGrammar.ast;
             //tool.log("grammar", "before="+combinedAST.toStringTree());
-            GrammarASTAdaptor adaptor = new GrammarASTAdaptor(combinedAST.Token.InputStream);
+            GrammarASTAdaptor adaptor = new(combinedAST.Token.InputStream);
             GrammarAST[] elements = combinedAST.GetChildrenAsArray();
 
             // MAKE A GRAMMAR ROOT and ID
             string lexerName = combinedAST.GetChild(0).Text + "Lexer";
             GrammarRootAST lexerAST =
-                new GrammarRootAST(new CommonToken(ANTLRParser.GRAMMAR, "LEXER_GRAMMAR"), combinedGrammar.ast.tokenStream);
+                new(new CommonToken(ANTLRParser.GRAMMAR, "LEXER_GRAMMAR"), combinedGrammar.ast.tokenStream);
             lexerAST.grammarType = ANTLRParser.LEXER;
             lexerAST.Token.InputStream = combinedAST.Token.InputStream;
-            lexerAST.AddChild((ITree)adaptor.Create(ANTLRParser.ID, lexerName));
+            lexerAST.AddChild((ITree) adaptor.Create(ANTLRParser.ID, lexerName));
 
             // COPY OPTIONS
             GrammarAST optionsRoot =
-                (GrammarAST)combinedAST.GetFirstChildWithType(ANTLRParser.OPTIONS);
+                (GrammarAST) combinedAST.GetFirstChildWithType(ANTLRParser.OPTIONS);
             if (optionsRoot != null && optionsRoot.ChildCount != 0)
             {
-                GrammarAST lexerOptionsRoot = (GrammarAST)adaptor.DupNode(optionsRoot);
+                GrammarAST lexerOptionsRoot = (GrammarAST) adaptor.DupNode(optionsRoot);
                 lexerAST.AddChild(lexerOptionsRoot);
                 GrammarAST[] options = optionsRoot.GetChildrenAsArray();
                 foreach (GrammarAST o in options)
                 {
                     string optionName = o.GetChild(0).Text;
                     if (Grammar.lexerOptions.Contains(optionName) &&
-                         !Grammar.doNotCopyOptionsToLexer.Contains(optionName))
+                        !Grammar.doNotCopyOptionsToLexer.Contains(optionName))
                     {
-                        GrammarAST optionTree = (GrammarAST)adaptor.DupTree(o);
+                        GrammarAST optionTree = (GrammarAST) adaptor.DupTree(o);
                         lexerOptionsRoot.AddChild(optionTree);
-                        lexerAST.SetOption(optionName, (GrammarAST)optionTree.GetChild(1));
+                        lexerAST.SetOption(optionName, (GrammarAST) optionTree.GetChild(1));
                     }
                 }
             }
@@ -374,7 +401,7 @@ namespace Antlr4.Tool
             {
                 if (e.Type == ANTLRParser.AT)
                 {
-                    lexerAST.AddChild((ITree)adaptor.DupTree(e));
+                    lexerAST.AddChild((ITree) adaptor.DupTree(e));
                     if (e.GetChild(0).Text.Equals("lexer"))
                     {
                         actionsWeMoved.Add(e);
@@ -388,13 +415,15 @@ namespace Antlr4.Tool
             }
 
             GrammarAST combinedRulesRoot =
-                (GrammarAST)combinedAST.GetFirstChildWithType(ANTLRParser.RULES);
+                (GrammarAST) combinedAST.GetFirstChildWithType(ANTLRParser.RULES);
             if (combinedRulesRoot == null)
+            {
                 return lexerAST;
+            }
 
             // MOVE lexer rules
 
-            GrammarAST lexerRulesRoot = (GrammarAST)adaptor.Create(ANTLRParser.RULES, "RULES");
+            GrammarAST lexerRulesRoot = (GrammarAST) adaptor.Create(ANTLRParser.RULES, "RULES");
             lexerAST.AddChild(lexerRulesRoot);
             IList<GrammarAST> rulesWeMoved = new List<GrammarAST>();
             GrammarASTWithOptions[] rules;
@@ -412,7 +441,7 @@ namespace Antlr4.Tool
                 string ruleName = r.GetChild(0).Text;
                 if (Grammar.IsTokenName(ruleName))
                 {
-                    lexerRulesRoot.AddChild((ITree)adaptor.DupTree(r));
+                    lexerRulesRoot.AddChild((ITree) adaptor.DupTree(r));
                     rulesWeMoved.Add(r);
                 }
             }
@@ -423,7 +452,7 @@ namespace Antlr4.Tool
             }
 
             // Will track 'if' from IF : 'if' ; rules to avoid defining new token for 'if'
-            IList<System.Tuple<GrammarAST, GrammarAST>> litAliases =
+            IList<Tuple<GrammarAST, GrammarAST>> litAliases =
                 Grammar.GetStringLiteralAliasesFromLexerRules(lexerAST);
 
             ISet<string> stringLiterals = combinedGrammar.GetStringLiterals();
@@ -436,23 +465,26 @@ namespace Antlr4.Tool
                 // if lexer already has a rule for literal, continue
                 if (litAliases != null)
                 {
-                    foreach (System.Tuple<GrammarAST, GrammarAST> pair in litAliases)
+                    foreach (Tuple<GrammarAST, GrammarAST> pair in litAliases)
                     {
                         GrammarAST litAST = pair.Item2;
                         if (lit.Equals(litAST.Text))
+                        {
                             goto continueNextLit;
+                        }
                     }
                 }
+
                 // create for each literal: (RULE <uniquename> (BLOCK (ALT <lit>))
                 string rname = combinedGrammar.GetStringLiteralLexerRuleName(lit);
                 // can't use wizard; need special node types
                 GrammarAST litRule = new RuleAST(ANTLRParser.RULE);
                 BlockAST blk = new BlockAST(ANTLRParser.BLOCK);
                 AltAST alt = new AltAST(ANTLRParser.ALT);
-                TerminalAST slit = new TerminalAST(new CommonToken(ANTLRParser.STRING_LITERAL, lit));
+                TerminalAST slit = new(new CommonToken(ANTLRParser.STRING_LITERAL, lit));
                 alt.AddChild(slit);
                 blk.AddChild(alt);
-                CommonToken idToken = new CommonToken(ANTLRParser.TOKEN_REF, rname);
+                CommonToken idToken = new(ANTLRParser.TOKEN_REF, rname);
                 litRule.AddChild(new TerminalAST(idToken));
                 litRule.AddChild(blk);
                 lexerRulesRoot.InsertChild(insertIndex, litRule);
@@ -462,8 +494,7 @@ namespace Antlr4.Tool
                 // next literal will be added after the one just added
                 insertIndex++;
 
-                continueNextLit:
-                ;
+                continueNextLit: ;
             }
 
             // TODO: take out after stable if slow
@@ -475,7 +506,10 @@ namespace Antlr4.Tool
             combinedGrammar.tool.Log("grammar", "lexer =" + lexerAST.ToStringTree());
 
             if (lexerRulesRoot.ChildCount == 0)
+            {
                 return null;
+            }
+
             return lexerAST;
         }
     }

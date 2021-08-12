@@ -2,72 +2,52 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime.Atn
 {
     /// <author>Sam Harwell</author>
     public class ATNDeserializationOptions
     {
-        private static readonly Antlr4.Runtime.Atn.ATNDeserializationOptions defaultOptions;
-
-        static ATNDeserializationOptions()
-        {
-            defaultOptions = new Antlr4.Runtime.Atn.ATNDeserializationOptions();
-            defaultOptions.MakeReadOnly();
-        }
-
-        private bool readOnly;
-
-        private bool verifyATN;
-
         private bool generateRuleBypassTransitions;
 
         private bool optimize;
 
+        private bool verifyATN;
+
+        static ATNDeserializationOptions()
+        {
+            Default = new ATNDeserializationOptions();
+            Default.MakeReadOnly();
+        }
+
         public ATNDeserializationOptions()
         {
-            this.verifyATN = true;
-            this.generateRuleBypassTransitions = false;
-            this.optimize = true;
+            verifyATN = true;
+            generateRuleBypassTransitions = false;
+            optimize = true;
         }
 
-        public ATNDeserializationOptions(Antlr4.Runtime.Atn.ATNDeserializationOptions options)
+        public ATNDeserializationOptions(ATNDeserializationOptions options)
         {
-            this.verifyATN = options.verifyATN;
-            this.generateRuleBypassTransitions = options.generateRuleBypassTransitions;
-            this.optimize = options.optimize;
+            verifyATN = options.verifyATN;
+            generateRuleBypassTransitions = options.generateRuleBypassTransitions;
+            optimize = options.optimize;
         }
 
-        [NotNull]
-        public static Antlr4.Runtime.Atn.ATNDeserializationOptions Default
-        {
-            get
-            {
-                return defaultOptions;
-            }
-        }
+        [NotNull] public static ATNDeserializationOptions Default { get; }
 
-        public bool IsReadOnly
-        {
-            get
-            {
-                return readOnly;
-            }
-        }
-
-        public void MakeReadOnly()
-        {
-            readOnly = true;
-        }
+        public bool IsReadOnly { get; private set; }
 
         public bool VerifyAtn
         {
-            get
-            {
-                return verifyATN;
-            }
+            get => verifyATN;
             set
             {
                 bool verifyATN = value;
@@ -78,10 +58,7 @@ namespace Antlr4.Runtime.Atn
 
         public bool GenerateRuleBypassTransitions
         {
-            get
-            {
-                return generateRuleBypassTransitions;
-            }
+            get => generateRuleBypassTransitions;
             set
             {
                 bool generateRuleBypassTransitions = value;
@@ -92,16 +69,18 @@ namespace Antlr4.Runtime.Atn
 
         public bool Optimize
         {
-            get
-            {
-                return optimize;
-            }
+            get => optimize;
             set
             {
                 bool optimize = value;
                 ThrowIfReadOnly();
                 this.optimize = optimize;
             }
+        }
+
+        public void MakeReadOnly()
+        {
+            IsReadOnly = true;
         }
 
         protected internal virtual void ThrowIfReadOnly()

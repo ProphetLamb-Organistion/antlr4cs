@@ -3,7 +3,9 @@
 
 namespace Antlr4.Codegen.Model.Decl
 {
-    /** x=ID or implicit _tID label */
+    /**
+     * x=ID or implicit _tID label
+     */
     public class TokenDecl : Decl
     {
         public bool isImplicit;

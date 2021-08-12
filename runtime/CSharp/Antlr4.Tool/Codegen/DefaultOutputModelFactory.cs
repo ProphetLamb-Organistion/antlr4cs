@@ -1,37 +1,40 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Codegen.Model;
+using Antlr4.Codegen.Model.Decl;
+using Antlr4.Tool;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Codegen.Model.Decl;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using NotSupportedException = System.NotSupportedException;
-    using NullableAttribute = Antlr4.Runtime.Misc.NullableAttribute;
-
-    /** Create output objects for elements *within* rule functions except
-     *  buildOutputModel() which builds outer/root model object and any
-     *  objects such as RuleFunction that surround elements in rule
-     *  functions.
+    /**
+     * Create output objects for elements *within* rule functions except
+     * buildOutputModel() which builds outer/root model object and any
+     * objects such as RuleFunction that surround elements in rule
+     * functions.
      */
     public abstract class DefaultOutputModelFactory : BlankOutputModelFactory
     {
         // Interface to outside world
-        [NotNull]
-        public readonly Grammar g;
-        [NotNull]
-        public readonly CodeGenerator gen;
+        [NotNull] public readonly Grammar g;
+
+        [NotNull] public readonly CodeGenerator gen;
 
         public OutputModelController controller;
 
         protected DefaultOutputModelFactory([NotNull] CodeGenerator gen)
         {
             this.gen = gen;
-            this.g = gen.g;
+            g = gen.g;
 
             if (gen.GetTarget() == null)
             {
@@ -58,7 +61,7 @@ namespace Antlr4.Codegen
                 CodeGenerator gen = GetGenerator();
                 TemplateGroup codegenTemplates = gen.GetTemplates();
                 Template setStopTokenAST = codegenTemplates.GetInstanceOf("recRuleSetStopToken");
-                Action setStopTokenAction = new Action(this, function.ruleCtx, setStopTokenAST);
+                Action setStopTokenAction = new(this, function.ruleCtx, setStopTokenAST);
                 IList<SrcOp> ops = new List<SrcOp>(1);
                 ops.Add(setStopTokenAction);
                 return ops;
@@ -136,16 +139,20 @@ namespace Antlr4.Codegen
             return new List<SrcOp>(values);
         }
 
-        [return: Nullable]
+        [return: MaybeNull]
         public virtual Decl GetCurrentDeclForName(string name)
         {
             if (GetCurrentBlock().locals == null)
+            {
                 return null;
+            }
 
             foreach (Decl d in GetCurrentBlock().locals.Elements)
             {
                 if (d.name.Equals(name))
+                {
                     return d;
+                }
             }
 
             return null;

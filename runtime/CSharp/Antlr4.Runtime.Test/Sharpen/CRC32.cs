@@ -1,18 +1,32 @@
-﻿namespace Antlr4.Runtime.Sharpen
-{
-    using System;
+﻿using System;
 
+namespace Antlr4.Runtime.Sharpen
+{
     internal class CRC32 : Checksum
     {
+        private const uint TBLS = 8;
+
+        private const int GF2_DIM = 32; /* dimension of GF(2) vectors (length of CRC) */
+
+        /* Local functions for crc concatenation */
+
+        private static readonly uint[][] crc_table;
         private uint _crc;
 
-        public long Value
+        static CRC32()
         {
-            get
+            crc_table = new uint[TBLS][];
+            for (int i = 0;
+                i < TBLS;
+                i++)
             {
-                return (int)_crc;
+                crc_table[i] = new uint[256];
             }
+
+            make_crc_table();
         }
+
+        public long Value => (int) _crc;
 
         public void Reset()
         {
@@ -22,26 +36,37 @@
         public void Update(byte[] buffer, int offset, int length)
         {
             if (buffer == null)
+            {
                 throw new ArgumentNullException("buffer");
+            }
+
             if (offset < 0)
+            {
                 throw new ArgumentOutOfRangeException("offset");
+            }
+
             if (length < 0)
+            {
                 throw new ArgumentOutOfRangeException("length");
+            }
+
             if (offset > buffer.Length || length > buffer.Length || offset + length > buffer.Length)
+            {
                 throw new ArgumentException();
+            }
 
             unsafe
             {
                 fixed (byte* data = buffer)
                 {
-                    _crc = crc32(_crc, data + offset, (uint)length);
+                    _crc = crc32(_crc, data + offset, (uint) length);
                 }
             }
         }
 
         public void Update(int byteValue)
         {
-            byte value = (byte)byteValue;
+            byte value = (byte) byteValue;
             unsafe
             {
                 _crc = crc32(_crc, &value, 1);
@@ -100,21 +125,6 @@
             return (w >> 24) + ((w >> 8) & 0xff00) + ((w & 0xff00) << 8) + ((w & 0xff) << 24);
         }
 
-        private const uint TBLS = 8;
-
-        /* Local functions for crc concatenation */
-
-        private static readonly uint[][] crc_table;
-
-        static CRC32()
-        {
-            crc_table = new uint[TBLS][];
-            for (int i = 0; i < TBLS; i++)
-                crc_table[i] = new uint[256];
-
-            make_crc_table();
-        }
-
         /*
           Generate tables for a byte-wise 32-bit CRC calculation on the polynomial:
           x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x+1.
@@ -144,30 +154,44 @@
         private static void make_crc_table()
         {
             /* terms of polynomial defining this crc (except x^32): */
-            byte[] p = { 0, 1, 2, 4, 5, 7, 8, 10, 11, 12, 16, 22, 23, 26 };
+            byte[] p = {0, 1, 2, 4, 5, 7, 8, 10, 11, 12, 16, 22, 23, 26};
 
             /* make exclusive-or pattern from polynomial (0xedb88320UL) */
             uint poly = 0U;
-            for (int n = 0; n < p.Length; n++)
+            for (int n = 0;
+                n < p.Length;
+                n++)
+            {
                 poly |= 1U << (31 - p[n]);
+            }
 
             /* generate a crc for every 8-bit value */
-            for (int n = 0; n < 256; n++)
+            for (int n = 0;
+                n < 256;
+                n++)
             {
-                uint c = (uint)n;
-                for (int k = 0; k < 8; k++)
+                uint c = (uint) n;
+                for (int k = 0;
+                    k < 8;
+                    k++)
+                {
                     c = (c & 1) != 0 ? poly ^ (c >> 1) : c >> 1;
+                }
 
                 crc_table[0][n] = c;
             }
 
             /* generate crc for each value followed by one, two, and three zeros,
                and then the byte reversal of those as well as the first table */
-            for (int n = 0; n < 256; n++)
+            for (int n = 0;
+                n < 256;
+                n++)
             {
                 uint c = crc_table[0][n];
                 crc_table[4][n] = REV(c);
-                for (int k = 1; k < 4; k++)
+                for (int k = 1;
+                    k < 4;
+                    k++)
                 {
                     c = crc_table[0][c & 0xff] ^ (c >> 8);
                     crc_table[k][n] = c;
@@ -187,7 +211,7 @@
         ///* ========================================================================= */
         private static unsafe void DO1(ref uint crc, ref byte* buf)
         {
-            crc = crc_table[0][(crc ^ (*buf++)) & 0xFF] ^ (crc >> 8);
+            crc = crc_table[0][(crc ^ *buf++) & 0xFF] ^ (crc >> 8);
         }
 
         private static unsafe void DO8(ref uint crc, ref byte* buf)
@@ -206,12 +230,16 @@
         private static unsafe uint crc32(uint crc, byte* buf, uint len)
         {
             if (buf == null)
+            {
                 return 0;
+            }
 
             if (BitConverter.IsLittleEndian)
-                return (uint)crc32_little(crc, buf, len);
-            else
-                return (uint)crc32_big(crc, buf, len);
+            {
+                return crc32_little(crc, buf, len);
+            }
+
+            return crc32_big(crc, buf, len);
         }
 
         ///* ========================================================================= */
@@ -237,15 +265,15 @@
         /* ========================================================================= */
         private static unsafe uint crc32_little(uint crc, byte* buf, uint len)
         {
-            uint c = (uint)crc;
+            uint c = crc;
             c = ~c;
-            while (len != 0 && ((uint)buf & 3) != 0)
+            while (len != 0 && ((uint) buf & 3) != 0)
             {
                 c = crc_table[0][(c ^ *buf++) & 0xff] ^ (c >> 8);
                 len--;
             }
 
-            uint* buf4 = (uint*)buf;
+            uint* buf4 = (uint*) buf;
             while (len >= 32)
             {
                 DOLIT32(ref c, ref buf4);
@@ -258,18 +286,19 @@
                 len -= 4;
             }
 
-            buf = (byte*)buf4;
+            buf = (byte*) buf4;
 
             if (len != 0)
             {
                 do
                 {
                     c = crc_table[0][(c ^ *buf++) & 0xff] ^ (c >> 8);
-                } while (--len != 0);
+                }
+                while (--len != 0);
             }
 
             c = ~c;
-            return (uint)c;
+            return c;
         }
 
         ///* ========================================================================= */
@@ -298,15 +327,15 @@
             uint c;
             uint* buf4;
 
-            c = REV((uint)crc);
+            c = REV(crc);
             c = ~c;
-            while (len != 0 && ((uint)buf & 3) != 0)
+            while (len != 0 && ((uint) buf & 3) != 0)
             {
                 c = crc_table[4][(c >> 24) ^ *buf++] ^ (c << 8);
                 len--;
             }
 
-            buf4 = (uint*)buf;
+            buf4 = (uint*) buf;
             buf4--;
             while (len >= 32)
             {
@@ -321,18 +350,20 @@
             }
 
             buf4++;
-            buf = (byte*)buf4;
+            buf = (byte*) buf4;
 
             if (len != 0)
+            {
                 do
                 {
                     c = crc_table[4][(c >> 24) ^ *buf++] ^ (c << 8);
-                } while (--len != 0);
-            c = ~c;
-            return (uint)(REV(c));
-        }
+                }
+                while (--len != 0);
+            }
 
-        private const int GF2_DIM = 32;      /* dimension of GF(2) vectors (length of CRC) */
+            c = ~c;
+            return REV(c);
+        }
 
         /* ========================================================================= */
         private static unsafe uint gf2_matrix_times(uint* mat, uint vec)
@@ -341,7 +372,9 @@
             while (vec != 0)
             {
                 if ((vec & 1) != 0)
+                {
                     sum ^= *mat;
+                }
 
                 vec >>= 1;
                 mat++;
@@ -353,8 +386,12 @@
         /* ========================================================================= */
         private static unsafe void gf2_matrix_square(uint* square, uint* mat)
         {
-            for (int n = 0; n < GF2_DIM; n++)
+            for (int n = 0;
+                n < GF2_DIM;
+                n++)
+            {
                 square[n] = gf2_matrix_times(mat, mat[n]);
+            }
         }
 
         /* ========================================================================= */
@@ -362,15 +399,19 @@
         {
             /* degenerate case */
             if (len2 == 0)
+            {
                 return crc1;
+            }
 
-            uint* even = stackalloc uint[GF2_DIM];    /* even-power-of-two zeros operator */
-            uint* odd = stackalloc uint[GF2_DIM];     /* odd-power-of-two zeros operator */
+            uint* even = stackalloc uint[GF2_DIM]; /* even-power-of-two zeros operator */
+            uint* odd = stackalloc uint[GF2_DIM]; /* odd-power-of-two zeros operator */
 
             /* put operator for one zero bit in odd */
-            odd[0] = 0xEDB88320U;           /* CRC-32 polynomial */
+            odd[0] = 0xEDB88320U; /* CRC-32 polynomial */
             uint row = 1;
-            for (int n = 1; n < GF2_DIM; n++)
+            for (int n = 1;
+                n < GF2_DIM;
+                n++)
             {
                 odd[n] = row;
                 row <<= 1;
@@ -389,23 +430,30 @@
                 /* apply zeros operator for this bit of len2 */
                 gf2_matrix_square(even, odd);
                 if ((len2 & 1) != 0)
+                {
                     crc1 = gf2_matrix_times(even, crc1);
+                }
 
                 len2 >>= 1;
 
                 /* if no more bits set, then done */
                 if (len2 == 0)
+                {
                     break;
+                }
 
                 /* another iteration of the loop with odd and even swapped */
                 gf2_matrix_square(odd, even);
                 if ((len2 & 1) != 0)
+                {
                     crc1 = gf2_matrix_times(odd, crc1);
+                }
 
                 len2 >>= 1;
 
                 /* if no more bits set, then done */
-            } while (len2 != 0);
+            }
+            while (len2 != 0);
 
             /* return combined crc */
             crc1 ^= crc2;

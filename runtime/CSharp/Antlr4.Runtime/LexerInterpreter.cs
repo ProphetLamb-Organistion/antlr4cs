@@ -3,32 +3,32 @@
 
 using System;
 using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
 using System.Linq;
 using Antlr4.Runtime.Atn;
-using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime
 {
     public class LexerInterpreter : Lexer
     {
-        protected internal readonly string grammarFileName;
-
         protected internal readonly ATN atn;
-
-        [Obsolete]
-        protected internal readonly string[] tokenNames;
-
-        protected internal readonly string[] ruleNames;
+        protected internal readonly string grammarFileName;
 
         protected internal readonly string[] modeNames;
 
-        [NotNull]
-        private readonly IVocabulary vocabulary;
+        protected internal readonly string[] ruleNames;
+
+        [Obsolete] protected internal readonly string[] tokenNames;
+
+        [NotNull] private readonly IVocabulary vocabulary;
 
         [Obsolete]
         public LexerInterpreter(string grammarFileName, IEnumerable<string> tokenNames, IEnumerable<string> ruleNames, IEnumerable<string> modeNames, ATN atn, ICharStream input)
-            : this(grammarFileName, Antlr4.Runtime.Vocabulary.FromTokenNames(tokenNames.ToArray()), ruleNames, modeNames, atn, input)
+            : this(grammarFileName, Runtime.Vocabulary.FromTokenNames(tokenNames.ToArray()), ruleNames, modeNames, atn, input)
         {
         }
 
@@ -39,11 +39,14 @@ namespace Antlr4.Runtime
             {
                 throw new ArgumentException("The ATN must be a lexer ATN.");
             }
+
             this.grammarFileName = grammarFileName;
             this.atn = atn;
 #pragma warning disable 612 // 'fieldName' is obsolete
-            this.tokenNames = new string[atn.maxTokenType];
-            for (int i = 0; i < tokenNames.Length; i++)
+            tokenNames = new string[atn.maxTokenType];
+            for (int i = 0;
+                i < tokenNames.Length;
+                i++)
             {
                 tokenNames[i] = vocabulary.GetDisplayName(i);
             }
@@ -51,49 +54,19 @@ namespace Antlr4.Runtime
             this.ruleNames = ruleNames.ToArray();
             this.modeNames = modeNames.ToArray();
             this.vocabulary = vocabulary;
-            this._interp = new LexerATNSimulator(this, atn);
+            _interp = new LexerATNSimulator(this, atn);
         }
 
-        public override ATN Atn
-        {
-            get
-            {
-                return atn;
-            }
-        }
+        public override ATN Atn => atn;
 
-        public override string GrammarFileName
-        {
-            get
-            {
-                return grammarFileName;
-            }
-        }
+        public override string GrammarFileName => grammarFileName;
 
         [Obsolete("Use IRecognizer.Vocabulary instead.")]
-        public override string[] TokenNames
-        {
-            get
-            {
-                return tokenNames;
-            }
-        }
+        public override string[] TokenNames => tokenNames;
 
-        public override string[] RuleNames
-        {
-            get
-            {
-                return ruleNames;
-            }
-        }
+        public override string[] RuleNames => ruleNames;
 
-        public override string[] ModeNames
-        {
-            get
-            {
-                return modeNames;
-            }
-        }
+        public override string[] ModeNames => modeNames;
 
         public override IVocabulary Vocabulary
         {
@@ -103,6 +76,7 @@ namespace Antlr4.Runtime
                 {
                     return vocabulary;
                 }
+
                 return base.Vocabulary;
             }
         }

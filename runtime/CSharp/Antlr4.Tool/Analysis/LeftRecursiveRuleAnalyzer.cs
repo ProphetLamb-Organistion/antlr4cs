@@ -1,73 +1,78 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Antlr4.Codegen;
+using Antlr4.Misc;
+using Antlr4.Parse;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Analysis
 {
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.Codegen;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using CommonToken = Antlr.Runtime.CommonToken;
-    using CommonTreeNodeStream = Antlr.Runtime.Tree.CommonTreeNodeStream;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-    using InvalidOperationException = System.InvalidOperationException;
-    using IToken = Antlr.Runtime.IToken;
-    using ITokenStream = Antlr.Runtime.ITokenStream;
-    using ITree = Antlr.Runtime.Tree.ITree;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using Path = System.IO.Path;
-    using Tuple = System.Tuple;
-    using Uri = System.Uri;
-
-    /** Using a tree walker on the rules, determine if a rule is directly left-recursive and if it follows
-     *  our pattern.
+    /**
+     * Using a tree walker on the rules, determine if a rule is directly left-recursive and if it follows
+     * our pattern.
      */
     public class LeftRecursiveRuleAnalyzer : LeftRecursiveRuleWalker
     {
         public enum ASSOC
         {
-            left, right
+            left,
+            right
         }
 
-        public AntlrTool tool;
-        public string ruleName;
-        public LinkedHashMap<int, LeftRecursiveRuleAltInfo> binaryAlts = new LinkedHashMap<int, LeftRecursiveRuleAltInfo>();
-        public LinkedHashMap<int, LeftRecursiveRuleAltInfo> ternaryAlts = new LinkedHashMap<int, LeftRecursiveRuleAltInfo>();
-        public LinkedHashMap<int, LeftRecursiveRuleAltInfo> suffixAlts = new LinkedHashMap<int, LeftRecursiveRuleAltInfo>();
-        public IList<LeftRecursiveRuleAltInfo> prefixAndOtherAlts = new List<LeftRecursiveRuleAltInfo>();
-
-        /** Pointer to ID node of ^(= ID element) */
-        public IList<System.Tuple<GrammarAST, string>> leftRecursiveRuleRefLabels =
-            new List<System.Tuple<GrammarAST, string>>();
-
-        /** Tokens from which rule AST comes from */
+        /**
+         * Tokens from which rule AST comes from
+         */
         public readonly ITokenStream tokenStream;
 
-        public GrammarAST retvals;
+        public IDictionary<int, ASSOC> altAssociativity = new Dictionary<int, ASSOC>();
+        public LinkedHashMap<int, LeftRecursiveRuleAltInfo> binaryAlts = new();
 
-        [NotNull]
-        public TemplateGroup recRuleTemplates;
-        [NotNull]
-        public TemplateGroup codegenTemplates;
+        [NotNull] public TemplateGroup codegenTemplates;
+
         public string language;
 
-        public IDictionary<int, ASSOC> altAssociativity = new Dictionary<int, ASSOC>();
+        /**
+         * Pointer to ID node of ^(= ID element)
+         */
+        public IList<Tuple<GrammarAST, string>> leftRecursiveRuleRefLabels =
+            new List<Tuple<GrammarAST, string>>();
+
+        public IList<LeftRecursiveRuleAltInfo> prefixAndOtherAlts = new List<LeftRecursiveRuleAltInfo>();
+
+        [NotNull] public TemplateGroup recRuleTemplates;
+
+        public GrammarAST retvals;
+        public string ruleName;
+        public LinkedHashMap<int, LeftRecursiveRuleAltInfo> suffixAlts = new();
+        public LinkedHashMap<int, LeftRecursiveRuleAltInfo> ternaryAlts = new();
+
+        public AntlrTool tool;
 
         public LeftRecursiveRuleAnalyzer(GrammarAST ruleAST,
-                                         AntlrTool tool, string ruleName, string language)
+            AntlrTool tool, string ruleName, string language)
             : base(new CommonTreeNodeStream(new GrammarASTAdaptor(ruleAST.Token.InputStream), ruleAST))
         {
             this.tool = tool;
             this.ruleName = ruleName;
             this.language = language;
-            this.tokenStream = ruleAST.g.tokenStream;
-            if (this.tokenStream == null)
+            tokenStream = ruleAST.g.tokenStream;
+            if (tokenStream == null)
             {
                 throw new InvalidOperationException("grammar must have a token stream");
             }
@@ -77,7 +82,7 @@ namespace Antlr4.Analysis
 
         public virtual void LoadPrecRuleTemplates()
         {
-            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.CodeBase).LocalPath;
+            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.Location).LocalPath;
             string baseDirectory = Path.GetDirectoryName(codeBaseLocation);
             string templateGroupFile = Path.Combine("Tool", "Templates", "LeftRecursiveRules.stg");
             recRuleTemplates = new TemplateGroupFile(
@@ -89,7 +94,7 @@ namespace Antlr4.Analysis
             }
 
             // use codegen to get correct language templates; that's it though
-            CodeGenerator gen = new CodeGenerator(tool, null, language);
+            CodeGenerator gen = new(tool, null, language);
             TemplateGroup templates = gen.GetTemplates();
             if (templates == null)
             {
@@ -133,6 +138,7 @@ namespace Antlr4.Analysis
             {
                 tool.errMgr.ToolError(ErrorType.INTERNAL_ERROR, "all operators of alt " + alt + " of left-recursive rule must have same associativity");
             }
+
             altAssociativity[alt] = assoc;
 
             //		System.out.println("setAltAssoc: op " + alt + ": " + t.getText()+", assoc="+assoc);
@@ -140,7 +146,7 @@ namespace Antlr4.Analysis
 
         public override void BinaryAlt(AltAST originalAltTree, int alt)
         {
-            AltAST altTree = (AltAST)originalAltTree.DupTree();
+            AltAST altTree = (AltAST) originalAltTree.DupTree();
             string altLabel = altTree.altLabel != null ? altTree.altLabel.Text : null;
 
             string label = null;
@@ -163,7 +169,7 @@ namespace Antlr4.Analysis
             string altText = Text(altTree);
             altText = altText.Trim();
             LeftRecursiveRuleAltInfo a =
-                new LeftRecursiveRuleAltInfo(alt, altText, label, altLabel, isListLabel, originalAltTree);
+                new(alt, altText, label, altLabel, isListLabel, originalAltTree);
             a.nextPrec = nextPrec;
             binaryAlts[alt] = a;
             //System.out.println("binaryAlt " + alt + ": " + altText + ", rewrite=" + rewriteText);
@@ -171,7 +177,7 @@ namespace Antlr4.Analysis
 
         public override void PrefixAlt(AltAST originalAltTree, int alt)
         {
-            AltAST altTree = (AltAST)originalAltTree.DupTree();
+            AltAST altTree = (AltAST) originalAltTree.DupTree();
             StripAltLabel(altTree);
 
             int nextPrec = Precedence(alt);
@@ -181,7 +187,7 @@ namespace Antlr4.Analysis
             altText = altText.Trim();
             string altLabel = altTree.altLabel != null ? altTree.altLabel.Text : null;
             LeftRecursiveRuleAltInfo a =
-                new LeftRecursiveRuleAltInfo(alt, altText, null, altLabel, false, originalAltTree);
+                new(alt, altText, null, altLabel, false, originalAltTree);
             a.nextPrec = nextPrec;
             prefixAndOtherAlts.Add(a);
             //System.out.println("prefixAlt " + alt + ": " + altText + ", rewrite=" + rewriteText);
@@ -189,7 +195,7 @@ namespace Antlr4.Analysis
 
         public override void SuffixAlt(AltAST originalAltTree, int alt)
         {
-            AltAST altTree = (AltAST)originalAltTree.DupTree();
+            AltAST altTree = (AltAST) originalAltTree.DupTree();
             string altLabel = altTree.altLabel != null ? altTree.altLabel.Text : null;
 
             string label = null;
@@ -206,19 +212,19 @@ namespace Antlr4.Analysis
             string altText = Text(altTree);
             altText = altText.Trim();
             LeftRecursiveRuleAltInfo a =
-                new LeftRecursiveRuleAltInfo(alt, altText, label, altLabel, isListLabel, originalAltTree);
+                new(alt, altText, label, altLabel, isListLabel, originalAltTree);
             suffixAlts[alt] = a;
             //		System.out.println("suffixAlt " + alt + ": " + altText + ", rewrite=" + rewriteText);
         }
 
         public override void OtherAlt(AltAST originalAltTree, int alt)
         {
-            AltAST altTree = (AltAST)originalAltTree.DupTree();
+            AltAST altTree = (AltAST) originalAltTree.DupTree();
             StripAltLabel(altTree);
             string altText = Text(altTree);
             string altLabel = altTree.altLabel != null ? altTree.altLabel.Text : null;
             LeftRecursiveRuleAltInfo a =
-                new LeftRecursiveRuleAltInfo(alt, altText, null, altLabel, false, originalAltTree);
+                new(alt, altText, null, altLabel, false, originalAltTree);
             // We keep other alts with prefix alts since they are all added to the start of the generated rule, and
             // we want to retain any prior ordering between them
             prefixAndOtherAlts.Add(a);
@@ -237,13 +243,22 @@ namespace Antlr4.Analysis
             ruleST.Add("setResultAction", setResultST);
             ruleST.Add("userRetvals", retvals);
 
-            LinkedHashMap<int, LeftRecursiveRuleAltInfo> opPrecRuleAlts = new LinkedHashMap<int, LeftRecursiveRuleAltInfo>();
-            foreach (var pair in binaryAlts)
+            var opPrecRuleAlts = new LinkedHashMap<int, LeftRecursiveRuleAltInfo>();
+            foreach (KeyValuePair<int, LeftRecursiveRuleAltInfo> pair in binaryAlts)
+            {
                 opPrecRuleAlts[pair.Key] = pair.Value;
-            foreach (var pair in ternaryAlts)
+            }
+
+            foreach (KeyValuePair<int, LeftRecursiveRuleAltInfo> pair in ternaryAlts)
+            {
                 opPrecRuleAlts[pair.Key] = pair.Value;
-            foreach (var pair in suffixAlts)
+            }
+
+            foreach (KeyValuePair<int, LeftRecursiveRuleAltInfo> pair in suffixAlts)
+            {
                 opPrecRuleAlts[pair.Key] = pair.Value;
+            }
+
             foreach (int alt in opPrecRuleAlts.Keys)
             {
                 LeftRecursiveRuleAltInfo altInfo = opPrecRuleAlts[alt];
@@ -268,20 +283,24 @@ namespace Antlr4.Analysis
         public virtual AltAST AddPrecedenceArgToRules(AltAST t, int prec)
         {
             if (t == null)
+            {
                 return null;
+            }
+
             // get all top-level rule refs from ALT
             IList<GrammarAST> outerAltRuleRefs = t.GetNodesWithTypePreorderDFS(IntervalSet.Of(RULE_REF));
             foreach (GrammarAST x in outerAltRuleRefs)
             {
-                RuleRefAST rref = (RuleRefAST)x;
+                RuleRefAST rref = (RuleRefAST) x;
                 bool recursive = rref.Text.Equals(ruleName);
                 bool rightmost = rref == outerAltRuleRefs[outerAltRuleRefs.Count - 1];
                 if (recursive && rightmost)
                 {
-                    GrammarAST dummyValueNode = new GrammarAST(new CommonToken(ANTLRParser.INT, "" + prec));
+                    GrammarAST dummyValueNode = new(new CommonToken(ANTLRParser.INT, "" + prec));
                     rref.SetOption(LeftRecursiveRuleTransformer.PRECEDENCE_OPTION_NAME, dummyValueNode);
                 }
             }
+
             return t;
         }
 
@@ -292,17 +311,28 @@ namespace Antlr4.Analysis
         public static bool HasImmediateRecursiveRuleRefs(GrammarAST t, string ruleName)
         {
             if (t == null)
-                return false;
-            GrammarAST blk = (GrammarAST)t.GetFirstChildWithType(BLOCK);
-            if (blk == null)
-                return false;
-            int n = blk.Children.Count;
-            for (int i = 0; i < n; i++)
             {
-                GrammarAST alt = (GrammarAST)blk.Children[i];
+                return false;
+            }
+
+            GrammarAST blk = (GrammarAST) t.GetFirstChildWithType(BLOCK);
+            if (blk == null)
+            {
+                return false;
+            }
+
+            int n = blk.Children.Count;
+            for (int i = 0;
+                i < n;
+                i++)
+            {
+                GrammarAST alt = (GrammarAST) blk.Children[i];
                 ITree first = alt.GetChild(0);
                 if (first == null)
+                {
                     continue;
+                }
+
                 if (first.Type == ELEMENT_OPTIONS)
                 {
                     first = alt.GetChild(1);
@@ -311,12 +341,19 @@ namespace Antlr4.Analysis
                         continue;
                     }
                 }
+
                 if (first.Type == RULE_REF && first.Text.Equals(ruleName))
+                {
                     return true;
+                }
+
                 ITree rref = first.GetChild(1);
                 if (rref != null && rref.Type == RULE_REF && rref.Text.Equals(ruleName))
+                {
                     return true;
+                }
             }
+
             return false;
         }
 
@@ -326,38 +363,45 @@ namespace Antlr4.Analysis
         public virtual GrammarAST StripLeftRecursion(GrammarAST altAST)
         {
             GrammarAST lrlabel = null;
-            GrammarAST first = (GrammarAST)altAST.GetChild(0);
+            GrammarAST first = (GrammarAST) altAST.GetChild(0);
             int leftRecurRuleIndex = 0;
             if (first.Type == ELEMENT_OPTIONS)
             {
-                first = (GrammarAST)altAST.GetChild(1);
+                first = (GrammarAST) altAST.GetChild(1);
                 leftRecurRuleIndex = 1;
             }
 
             ITree rref = first.GetChild(1); // if label=rule
-            if ((first.Type == RULE_REF && first.Text.Equals(ruleName)) ||
-                 (rref != null && rref.Type == RULE_REF && rref.Text.Equals(ruleName)))
+            if (first.Type == RULE_REF && first.Text.Equals(ruleName) ||
+                rref != null && rref.Type == RULE_REF && rref.Text.Equals(ruleName))
             {
                 if (first.Type == ASSIGN || first.Type == PLUS_ASSIGN)
-                    lrlabel = (GrammarAST)first.GetChild(0);
+                {
+                    lrlabel = (GrammarAST) first.GetChild(0);
+                }
+
                 // remove rule ref (first child unless options present)
                 altAST.DeleteChild(leftRecurRuleIndex);
                 // reset index so it prints properly (sets token range of
                 // ALT to start to right of left recur rule we deleted)
-                GrammarAST newFirstChild = (GrammarAST)altAST.GetChild(leftRecurRuleIndex);
+                GrammarAST newFirstChild = (GrammarAST) altAST.GetChild(leftRecurRuleIndex);
                 altAST.TokenStartIndex = newFirstChild.TokenStartIndex;
             }
 
             return lrlabel;
         }
 
-        /** Strip last 2 tokens if → label; alter indexes in altAST */
+        /**
+         * Strip last 2 tokens if → label; alter indexes in altAST
+         */
         public virtual void StripAltLabel(GrammarAST altAST)
         {
             int start = altAST.TokenStartIndex;
             int stop = altAST.TokenStopIndex;
             // find =>
-            for (int i = stop; i >= start; i--)
+            for (int i = stop;
+                i >= start;
+                i--)
             {
                 if (tokenStream.Get(i).Type == POUND)
                 {
@@ -370,7 +414,9 @@ namespace Antlr4.Analysis
         public virtual string Text(GrammarAST t)
         {
             if (t == null)
+            {
                 return "";
+            }
 
             int tokenStartIndex = t.TokenStartIndex;
             int tokenStopIndex = t.TokenStopIndex;
@@ -380,7 +426,7 @@ namespace Antlr4.Analysis
             //
             // element options are added back according to the values in the map
             // returned by getOptions().
-            IntervalSet ignore = new IntervalSet();
+            IntervalSet ignore = new();
             IList<GrammarAST> optionsSubTrees = t.GetNodesWithType(ELEMENT_OPTIONS);
             foreach (GrammarAST sub in optionsSubTrees)
             {
@@ -390,14 +436,14 @@ namespace Antlr4.Analysis
             // Individual labels appear as RULE_REF or TOKEN_REF tokens in the tree,
             // but do not support the ELEMENT_OPTIONS syntax. Make sure to not try
             // and add the tokenIndex option when writing these tokens.
-            IntervalSet noOptions = new IntervalSet();
+            IntervalSet noOptions = new();
             IList<GrammarAST> labeledSubTrees = t.GetNodesWithType(new IntervalSet(ASSIGN, PLUS_ASSIGN));
             foreach (GrammarAST sub in labeledSubTrees)
             {
                 noOptions.Add(sub.GetChild(0).TokenStartIndex);
             }
 
-            StringBuilder buf = new StringBuilder();
+            StringBuilder buf = new();
             int i = tokenStartIndex;
             while (i <= tokenStopIndex)
             {
@@ -410,21 +456,21 @@ namespace Antlr4.Analysis
                 IToken tok = tokenStream.Get(i);
 
                 // Compute/hold any element options
-                StringBuilder elementOptions = new StringBuilder();
+                StringBuilder elementOptions = new();
                 if (!noOptions.Contains(i))
                 {
                     GrammarAST node = t.GetNodeWithTokenIndex(tok.TokenIndex);
                     if (node != null &&
-                         (tok.Type == TOKEN_REF ||
-                          tok.Type == STRING_LITERAL ||
-                          tok.Type == RULE_REF))
+                        (tok.Type == TOKEN_REF ||
+                         tok.Type == STRING_LITERAL ||
+                         tok.Type == RULE_REF))
                     {
                         elementOptions.Append("tokenIndex=").Append(tok.TokenIndex);
                     }
 
                     if (node is GrammarASTWithOptions)
                     {
-                        GrammarASTWithOptions o = (GrammarASTWithOptions)node;
+                        GrammarASTWithOptions o = (GrammarASTWithOptions) node;
                         foreach (KeyValuePair<string, GrammarAST> entry in o.GetOptions())
                         {
                             if (elementOptions.Length > 0)
@@ -440,7 +486,7 @@ namespace Antlr4.Analysis
                 }
 
                 buf.Append(tok.Text); // add actual text of the current token to the rewritten alternative
-                i++;                       // move to the next token
+                i++; // move to the next token
 
                 // Are there args on a rule?
                 if (tok.Type == RULE_REF && i <= tokenStopIndex && tokenStream.Get(i).Type == ARG_ACTION)
@@ -455,6 +501,7 @@ namespace Antlr4.Analysis
                     buf.Append('<').Append(elementOptions).Append('>');
                 }
             }
+
             return buf.ToString();
         }
 
@@ -469,7 +516,9 @@ namespace Antlr4.Analysis
             int p = Precedence(alt);
             ASSOC assoc;
             if (altAssociativity.TryGetValue(alt, out assoc) && assoc == ASSOC.right)
+            {
                 return p;
+            }
 
             return p + 1;
         }

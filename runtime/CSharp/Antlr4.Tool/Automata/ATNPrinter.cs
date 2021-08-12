@@ -1,20 +1,22 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using System.Text;
+using Antlr4.Runtime.Atn;
+using Antlr4.Tool;
+
 namespace Antlr4.Automata
 {
-    using System.Collections.Generic;
-    using System.Text;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-
-    /** An ATN walker that knows how to dump them to serialized strings. */
+    /**
+     * An ATN walker that knows how to dump them to serialized strings.
+     */
     public class ATNPrinter
     {
-        IList<ATNState> work;
-        ISet<ATNState> marked;
-        Grammar g;
-        ATNState start;
+        private readonly Grammar g;
+        private ISet<ATNState> marked;
+        private readonly ATNState start;
+        private IList<ATNState> work;
 
         public ATNPrinter(Grammar g, ATNState start)
         {
@@ -25,13 +27,16 @@ namespace Antlr4.Automata
         public virtual string AsString()
         {
             if (start == null)
+            {
                 return null;
+            }
+
             marked = new HashSet<ATNState>();
 
             work = new List<ATNState>();
             work.Add(start);
 
-            StringBuilder buf = new StringBuilder();
+            StringBuilder buf = new();
             ATNState s;
 
             while (work.Count > 0)
@@ -39,20 +44,31 @@ namespace Antlr4.Automata
                 s = work[0];
                 work.RemoveAt(0);
                 if (marked.Contains(s))
+                {
                     continue;
+                }
+
                 int n = s.NumberOfTransitions;
                 //System.Console.WriteLine("visit " + s + "; edges=" + n);
                 marked.Add(s);
-                for (int i = 0; i < n; i++)
+                for (int i = 0;
+                    i < n;
+                    i++)
                 {
                     Transition t = s.Transition(i);
                     if (!(s is RuleStopState))
-                    { // don't add follow states to work
+                    {
+                        // don't add follow states to work
                         if (t is RuleTransition)
-                            work.Add(((RuleTransition)t).followState);
+                        {
+                            work.Add(((RuleTransition) t).followState);
+                        }
                         else
+                        {
                             work.Add(t.target);
+                        }
                     }
+
                     buf.Append(GetStateString(s));
                     if (t is EpsilonTransition)
                     {
@@ -60,20 +76,20 @@ namespace Antlr4.Automata
                     }
                     else if (t is RuleTransition)
                     {
-                        buf.Append("-").Append(g.GetRule(((RuleTransition)t).ruleIndex).name).Append("->").Append(GetStateString(t.target)).Append('\n');
+                        buf.Append("-").Append(g.GetRule(((RuleTransition) t).ruleIndex).name).Append("->").Append(GetStateString(t.target)).Append('\n');
                     }
                     else if (t is ActionTransition)
                     {
-                        ActionTransition a = (ActionTransition)t;
-                        buf.Append("-").Append(a.ToString()).Append("->").Append(GetStateString(t.target)).Append('\n');
+                        ActionTransition a = (ActionTransition) t;
+                        buf.Append("-").Append(a).Append("->").Append(GetStateString(t.target)).Append('\n');
                     }
                     else if (t is SetTransition)
                     {
-                        SetTransition st = (SetTransition)t;
+                        SetTransition st = (SetTransition) t;
                         bool not = st is NotSetTransition;
                         if (g.IsLexer())
                         {
-                            buf.Append("-").Append(not ? "~" : "").Append(st.ToString()).Append("->").Append(GetStateString(t.target)).Append('\n');
+                            buf.Append("-").Append(not ? "~" : "").Append(st).Append("->").Append(GetStateString(t.target)).Append('\n');
                         }
                         else
                         {
@@ -82,16 +98,17 @@ namespace Antlr4.Automata
                     }
                     else if (t is AtomTransition)
                     {
-                        AtomTransition a = (AtomTransition)t;
+                        AtomTransition a = (AtomTransition) t;
                         string label = g.GetTokenDisplayName(a.label);
                         buf.Append("-").Append(label).Append("->").Append(GetStateString(t.target)).Append('\n');
                     }
                     else
                     {
-                        buf.Append("-").Append(t.ToString()).Append("->").Append(GetStateString(t.target)).Append('\n');
+                        buf.Append("-").Append(t).Append("->").Append(GetStateString(t.target)).Append('\n');
                     }
                 }
             }
+
             return buf.ToString();
         }
 
@@ -100,23 +117,42 @@ namespace Antlr4.Automata
             int n = s.stateNumber;
             string stateStr = "s" + n;
             if (s is StarBlockStartState)
+            {
                 stateStr = "StarBlockStart_" + n;
+            }
             else if (s is PlusBlockStartState)
+            {
                 stateStr = "PlusBlockStart_" + n;
+            }
             else if (s is BlockStartState)
+            {
                 stateStr = "BlockStart_" + n;
+            }
             else if (s is BlockEndState)
+            {
                 stateStr = "BlockEnd_" + n;
+            }
             else if (s is RuleStartState)
+            {
                 stateStr = "RuleStart_" + g.GetRule(s.ruleIndex).name + "_" + n;
+            }
             else if (s is RuleStopState)
+            {
                 stateStr = "RuleStop_" + g.GetRule(s.ruleIndex).name + "_" + n;
+            }
             else if (s is PlusLoopbackState)
+            {
                 stateStr = "PlusLoopBack_" + n;
+            }
             else if (s is StarLoopbackState)
+            {
                 stateStr = "StarLoopBack_" + n;
+            }
             else if (s is StarLoopEntryState)
+            {
                 stateStr = "StarLoopEntry_" + n;
+            }
+
             return stateStr;
         }
     }

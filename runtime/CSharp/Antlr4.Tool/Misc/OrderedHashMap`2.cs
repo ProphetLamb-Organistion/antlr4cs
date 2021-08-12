@@ -1,24 +1,24 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+
 namespace Antlr4.Misc
 {
-    using System.Collections.Generic;
-
-    /** I need the get-element-i functionality so I'm subclassing
-     *  LinkedHashMap.
+    /**
+     * I need the get-element-i functionality so I'm subclassing
+     * LinkedHashMap.
      */
     public class OrderedHashMap<K, V> : LinkedHashMap<K, V>
     {
-        /** Track the elements as they are added to the set */
+        /**
+         * Track the elements as they are added to the set
+         */
         protected IList<K> elements = new List<K>();
 
         public override V this[K key]
         {
-            get
-            {
-                return base[key];
-            }
+            get => base[key];
 
             set
             {

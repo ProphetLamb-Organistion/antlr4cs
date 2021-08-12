@@ -28,16 +28,14 @@
  *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen.Target
 {
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool.Ast;
-    using ArgumentException = System.ArgumentException;
-    using Path = System.IO.Path;
-    using Uri = System.Uri;
-
     public class CSharpTarget : AbstractTarget
     {
         public CSharpTarget(CodeGenerator gen)
@@ -55,9 +53,9 @@ namespace Antlr4.Codegen.Target
 
         public override string EncodeIntAsCharEscape(int v)
         {
-            if (v < char.MinValue || v > char.MaxValue)
+            if (v < Char.MinValue || v > Char.MaxValue)
             {
-                throw new ArgumentException(string.Format("Cannot encode the specified value: {0}", v));
+                throw new ArgumentException($"Cannot encode the specified value: {v}");
             }
 
             if (v >= 0 && v < targetCharValueEscape.Length && targetCharValueEscape[v] != null)
@@ -67,23 +65,27 @@ namespace Antlr4.Codegen.Target
 
             if (v >= 0x20 && v < 127 && (v < '0' || v > '9') && (v < 'a' || v > 'f') && (v < 'A' || v > 'F'))
             {
-                return new string((char)v, 1);
+                return new string((char) v, 1);
             }
 
-            return string.Format("\\x{0:X}", v);
+            return $"\\x{v:X}";
         }
 
         public override string GetTargetStringLiteralFromANTLRStringLiteral(
             CodeGenerator generator,
             string literal, bool addQuotes)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             string @is = literal;
 
             if (addQuotes)
+            {
                 sb.Append('"');
+            }
 
-            for (int i = 1; i < @is.Length - 1; i++)
+            for (int i = 1;
+                i < @is.Length - 1;
+                i++)
             {
                 if (@is[i] == '\\')
                 {
@@ -95,30 +97,25 @@ namespace Antlr4.Codegen.Target
                     //
                     switch (@is[i + 1])
                     {
-                    // Pass through any escapes that Java also needs
-                    //
-                    case '"':
-                    case 'n':
-                    case 'r':
-                    case 't':
-                    case 'b':
-                    case 'f':
-                    case '\\':
-                        // Pass the escape through
-                        sb.Append('\\');
-                        break;
+                        // Pass through any escapes that Java also needs
+                        //
+                        case '"':
+                        case 'n':
+                        case 'r':
+                        case 't':
+                        case 'b':
+                        case 'f':
+                        case '\\':
+                            // Pass the escape through
+                            sb.Append('\\');
+                            break;
 
-                    case 'u':    // Assume unnnn
-                                 // Pass the escape through as double \\
-                                 // so that Java leaves as \u0000 string not char
-                        sb.Append('\\');
-                        sb.Append('\\');
-                        break;
-
-                    default:
-                        // Remove the escape by virtue of not adding it here
-                        // Thus \' becomes ' and so on
-                        break;
+                        case 'u': // Assume unnnn
+                            // Pass the escape through as double \\
+                            // so that Java leaves as \u0000 string not char
+                            sb.Append('\\');
+                            sb.Append('\\');
+                            break;
                     }
 
                     // Go past the \ character
@@ -133,12 +130,15 @@ namespace Antlr4.Codegen.Target
                         sb.Append('\\');
                     }
                 }
+
                 // Add in the next character, which may have been escaped
                 sb.Append(@is[i]);
             }
 
             if (addQuotes)
+            {
                 sb.Append('"');
+            }
 
             return sb.ToString();
         }
@@ -151,7 +151,7 @@ namespace Antlr4.Codegen.Target
         protected override TemplateGroup LoadTemplates()
         {
             // override the superclass behavior to put all C# templates in the same folder
-            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.CodeBase).LocalPath;
+            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.Location).LocalPath;
             string baseDirectory = Path.GetDirectoryName(codeBaseLocation);
             TemplateGroup result = new TemplateGroupFile(
                 Path.Combine(

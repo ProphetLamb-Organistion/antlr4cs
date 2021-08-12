@@ -2,75 +2,75 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System.Collections.Generic;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
-using Antlr4.Runtime.Tree;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
 using Antlr4.Runtime.Tree.Xpath;
 
 namespace Antlr4.Runtime.Tree.Pattern
 {
     /// <summary>
-    /// A pattern like
-    /// <c>&lt;ID&gt; = &lt;expr&gt;;</c>
-    /// converted to a
-    /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
-    /// by
-    /// <see cref="ParseTreePatternMatcher.Compile(string, int)"/>
-    /// .
+    ///     A pattern like
+    ///     <c>&lt;ID&gt; = &lt;expr&gt;;</c>
+    ///     converted to a
+    ///     <see cref="Antlr4.Runtime.Tree.IParseTree" />
+    ///     by
+    ///     <see cref="ParseTreePatternMatcher.Compile(string, int)" />
+    ///     .
     /// </summary>
     public class ParseTreePattern
     {
         /// <summary>
-        /// This is the backing field for
-        /// <see cref="PatternRuleIndex()"/>
-        /// .
+        ///     This is the backing field for
+        ///     <see cref="Matcher()" />
+        ///     .
+        /// </summary>
+        [NotNull] private readonly ParseTreePatternMatcher matcher;
+
+        /// <summary>
+        ///     This is the backing field for
+        ///     <see cref="Pattern()" />
+        ///     .
+        /// </summary>
+        [NotNull] private readonly string pattern;
+
+        /// <summary>
+        ///     This is the backing field for
+        ///     <see cref="PatternRuleIndex()" />
+        ///     .
         /// </summary>
         private readonly int patternRuleIndex;
 
         /// <summary>
-        /// This is the backing field for
-        /// <see cref="Pattern()"/>
-        /// .
+        ///     This is the backing field for
+        ///     <see cref="PatternTree()" />
+        ///     .
         /// </summary>
-        [NotNull]
-        private readonly string pattern;
+        [NotNull] private readonly IParseTree patternTree;
 
         /// <summary>
-        /// This is the backing field for
-        /// <see cref="PatternTree()"/>
-        /// .
-        /// </summary>
-        [NotNull]
-        private readonly IParseTree patternTree;
-
-        /// <summary>
-        /// This is the backing field for
-        /// <see cref="Matcher()"/>
-        /// .
-        /// </summary>
-        [NotNull]
-        private readonly ParseTreePatternMatcher matcher;
-
-        /// <summary>
-        /// Construct a new instance of the
-        /// <see cref="ParseTreePattern"/>
-        /// class.
+        ///     Construct a new instance of the
+        ///     <see cref="ParseTreePattern" />
+        ///     class.
         /// </summary>
         /// <param name="matcher">
-        /// The
-        /// <see cref="ParseTreePatternMatcher"/>
-        /// which created this
-        /// tree pattern.
+        ///     The
+        ///     <see cref="ParseTreePatternMatcher" />
+        ///     which created this
+        ///     tree pattern.
         /// </param>
         /// <param name="pattern">The tree pattern in concrete syntax form.</param>
         /// <param name="patternRuleIndex">
-        /// The parser rule which serves as the root of the
-        /// tree pattern.
+        ///     The parser rule which serves as the root of the
+        ///     tree pattern.
         /// </param>
         /// <param name="patternTree">
-        /// The tree pattern in
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
-        /// form.
+        ///     The tree pattern in
+        ///     <see cref="Antlr4.Runtime.Tree.IParseTree" />
+        ///     form.
         /// </param>
         public ParseTreePattern([NotNull] ParseTreePatternMatcher matcher, [NotNull] string pattern, int patternRuleIndex, [NotNull] IParseTree patternTree)
         {
@@ -80,16 +80,64 @@ namespace Antlr4.Runtime.Tree.Pattern
             this.patternTree = patternTree;
         }
 
+        /// <summary>
+        ///     Get the
+        ///     <see cref="ParseTreePatternMatcher" />
+        ///     which created this tree pattern.
+        /// </summary>
+        /// <returns>
+        ///     The
+        ///     <see cref="ParseTreePatternMatcher" />
+        ///     which created this tree
+        ///     pattern.
+        /// </returns>
+        [NotNull]
+        public virtual ParseTreePatternMatcher Matcher => matcher;
+
+        /// <summary>Get the tree pattern in concrete syntax form.</summary>
+        /// <returns>The tree pattern in concrete syntax form.</returns>
+        [NotNull]
+        public virtual string Pattern => pattern;
+
+        /// <summary>
+        ///     Get the parser rule which serves as the outermost rule for the tree
+        ///     pattern.
+        /// </summary>
+        /// <returns>
+        ///     The parser rule which serves as the outermost rule for the tree
+        ///     pattern.
+        /// </returns>
+        public virtual int PatternRuleIndex => patternRuleIndex;
+
+        /// <summary>
+        ///     Get the tree pattern as a
+        ///     <see cref="Antlr4.Runtime.Tree.IParseTree" />
+        ///     . The rule and token tags from
+        ///     the pattern are present in the parse tree as terminal nodes with a symbol
+        ///     of type
+        ///     <see cref="RuleTagToken" />
+        ///     or
+        ///     <see cref="TokenTagToken" />
+        ///     .
+        /// </summary>
+        /// <returns>
+        ///     The tree pattern as a
+        ///     <see cref="Antlr4.Runtime.Tree.IParseTree" />
+        ///     .
+        /// </returns>
+        [NotNull]
+        public virtual IParseTree PatternTree => patternTree;
+
         /// <summary>Match a specific parse tree against this tree pattern.</summary>
         /// <param name="tree">The parse tree to match against this tree pattern.</param>
         /// <returns>
-        /// A
-        /// <see cref="ParseTreeMatch"/>
-        /// object describing the result of the
-        /// match operation. The
-        /// <see cref="ParseTreeMatch.Succeeded()"/>
-        /// method can be
-        /// used to determine whether or not the match was successful.
+        ///     A
+        ///     <see cref="ParseTreeMatch" />
+        ///     object describing the result of the
+        ///     match operation. The
+        ///     <see cref="ParseTreeMatch.Succeeded()" />
+        ///     method can be
+        ///     used to determine whether or not the match was successful.
         /// </returns>
         [return: NotNull]
         public virtual ParseTreeMatch Match([NotNull] IParseTree tree)
@@ -100,14 +148,13 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <summary>Determine whether or not a parse tree matches this tree pattern.</summary>
         /// <param name="tree">The parse tree to match against this tree pattern.</param>
         /// <returns>
-        /// 
-        /// <see langword="true"/>
-        /// if
-        /// <paramref name="tree"/>
-        /// is a match for the current tree
-        /// pattern; otherwise,
-        /// <see langword="false"/>
-        /// .
+        ///     <see langword="true" />
+        ///     if
+        ///     <paramref name="tree" />
+        ///     is a match for the current tree
+        ///     pattern; otherwise,
+        ///     <see langword="false" />
+        ///     .
         /// </returns>
         public virtual bool Matches([NotNull] IParseTree tree)
         {
@@ -115,21 +162,21 @@ namespace Antlr4.Runtime.Tree.Pattern
         }
 
         /// <summary>
-        /// Find all nodes using XPath and then try to match those subtrees against
-        /// this tree pattern.
+        ///     Find all nodes using XPath and then try to match those subtrees against
+        ///     this tree pattern.
         /// </summary>
         /// <param name="tree">
-        /// The
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
-        /// to match against this pattern.
+        ///     The
+        ///     <see cref="Antlr4.Runtime.Tree.IParseTree" />
+        ///     to match against this pattern.
         /// </param>
         /// <param name="xpath">An expression matching the nodes</param>
         /// <returns>
-        /// A collection of
-        /// <see cref="ParseTreeMatch"/>
-        /// objects describing the
-        /// successful matches. Unsuccessful matches are omitted from the result,
-        /// regardless of the reason for the failure.
+        ///     A collection of
+        ///     <see cref="ParseTreeMatch" />
+        ///     objects describing the
+        ///     successful matches. Unsuccessful matches are omitted from the result,
+        ///     regardless of the reason for the failure.
         /// </returns>
         [return: NotNull]
         public virtual IList<ParseTreeMatch> FindAll([NotNull] IParseTree tree, [NotNull] string xpath)
@@ -144,79 +191,8 @@ namespace Antlr4.Runtime.Tree.Pattern
                     matches.Add(match);
                 }
             }
+
             return matches;
-        }
-
-        /// <summary>
-        /// Get the
-        /// <see cref="ParseTreePatternMatcher"/>
-        /// which created this tree pattern.
-        /// </summary>
-        /// <returns>
-        /// The
-        /// <see cref="ParseTreePatternMatcher"/>
-        /// which created this tree
-        /// pattern.
-        /// </returns>
-        [NotNull]
-        public virtual ParseTreePatternMatcher Matcher
-        {
-            get
-            {
-                return matcher;
-            }
-        }
-
-        /// <summary>Get the tree pattern in concrete syntax form.</summary>
-        /// <returns>The tree pattern in concrete syntax form.</returns>
-        [NotNull]
-        public virtual string Pattern
-        {
-            get
-            {
-                return pattern;
-            }
-        }
-
-        /// <summary>
-        /// Get the parser rule which serves as the outermost rule for the tree
-        /// pattern.
-        /// </summary>
-        /// <returns>
-        /// The parser rule which serves as the outermost rule for the tree
-        /// pattern.
-        /// </returns>
-        public virtual int PatternRuleIndex
-        {
-            get
-            {
-                return patternRuleIndex;
-            }
-        }
-
-        /// <summary>
-        /// Get the tree pattern as a
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
-        /// . The rule and token tags from
-        /// the pattern are present in the parse tree as terminal nodes with a symbol
-        /// of type
-        /// <see cref="RuleTagToken"/>
-        /// or
-        /// <see cref="TokenTagToken"/>
-        /// .
-        /// </summary>
-        /// <returns>
-        /// The tree pattern as a
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
-        /// .
-        /// </returns>
-        [NotNull]
-        public virtual IParseTree PatternTree
-        {
-            get
-            {
-                return patternTree;
-            }
         }
     }
 }

@@ -1,33 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
-  <metadata minClientVersion="2.7">
-    <id>Antlr4</id>
-    <version>0.0.0</version>
-    <authors>ProphetLamb, Sam Harwell, Terence Parr</authors>
-    <owners>ProphetLamb</owners>
-    <description>The C# target of the ANTLR 4 parser generator for Visual Studio 2010+ projects. This package supports projects targeting .NET 2.0 or newer, and built using Visual Studio 2010 or newer.</description>
-    <language>en-us</language>
-    <projectUrl>https://github.com/ProphetLamb-Organistion/antlr4cs/antlr4cs</projectUrl>
-    <license type="file">assets\LICENSE.txt</license>
-    <icon>assets\antlr.png</icon>
-    <copyright>Copyright © ProphetLamb 2021</copyright>
-    <releaseNotes>https://github.com/ProphetLamb-Organistion/antlr4cs/releases/v$version$</releaseNotes>
-    <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <developmentDependency>true</developmentDependency>
-    <tags>antlr antlr4 parsing</tags>
-    <title>ANTLR 4</title>
-    <summary>The C# target of the ANTLR 4 parser generator for Visual Studio 2010+ projects.</summary>
-    <dependencies>
-      <dependency id="Antlr4.CodeGenerator" version="$version$" />
-      <dependency id="Antlr4.Runtime" version="$version$" />
-    </dependencies>
-  </metadata>
-  <files>
-    <!-- Assets -->
-    
-    <file src="..\LICENSE.txt" target="assets\"/>
-    <file src="..\images\icons\antlr.png" target="assets\"/>
-    <file src="..\Readme.md" target="assets\"/>
-    <file src="..\THIRD-PARTY-NOTICES.txt" target="assets\"/>
-  </files>
+    <metadata minClientVersion="2.7">
+        <id>Antlr4</id>
+        <version>0.0.0</version>
+        <authors>ProphetLamb, Sam Harwell, Terence Parr</authors>
+        <owners>ProphetLamb</owners>
+        <description>The C# target of the ANTLR 4 parser generator for Visual Studio 2010+ projects. This package supports projects targeting .NET 2.0 or newer, and built using
+            Visual Studio 2010 or newer.
+        </description>
+        <language>en-us</language>
+        <projectUrl>https://github.com/ProphetLamb-Organistion/antlr4cs/antlr4cs</projectUrl>
+        <license type="file">assets\LICENSE.txt</license>
+        <icon>assets\antlr.png</icon>
+        <copyright>Copyright © ProphetLamb 2021</copyright>
+        <releaseNotes>https://github.com/ProphetLamb-Organistion/antlr4cs/releases/v$version$</releaseNotes>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <developmentDependency>true</developmentDependency>
+        <tags>antlr antlr4 parsing</tags>
+        <title>ANTLR 4</title>
+        <summary>The C# target of the ANTLR 4 parser generator for Visual Studio 2010+ projects.</summary>
+        <dependencies>
+            <dependency id="Antlr4.CodeGenerator" version="$version$"/>
+            <dependency id="Antlr4.Runtime" version="$version$"/>
+        </dependencies>
+    </metadata>
+    <files>
+        <!-- Assets -->
+
+        <file src="..\LICENSE.txt" target="assets\"/>
+        <file src="..\images\icons\antlr.png" target="assets\"/>
+        <file src="..\Readme.md" target="assets\"/>
+        <file src="..\THIRD-PARTY-NOTICES.txt" target="assets\"/>
+    </files>
 </package>

@@ -2,29 +2,29 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime.Atn
 {
     /// <summary>
-    /// Used to cache
-    /// <see cref="PredictionContext"/>
-    /// objects. Its used for the shared
-    /// context cash associated with contexts in DFA states. This cache
-    /// can be used for both lexers and parsers.
+    ///     Used to cache
+    ///     <see cref="PredictionContext" />
+    ///     objects. Its used for the shared
+    ///     context cash associated with contexts in DFA states. This cache
+    ///     can be used for both lexers and parsers.
     /// </summary>
     /// <author>Sam Harwell</author>
     public class PredictionContextCache
     {
-        public static readonly Antlr4.Runtime.Atn.PredictionContextCache Uncached = new Antlr4.Runtime.Atn.PredictionContextCache(false);
+        public static readonly PredictionContextCache Uncached = new(false);
+
+        private readonly IDictionary<PredictionContextAndInt, PredictionContext> childContexts = new Dictionary<PredictionContextAndInt, PredictionContext>();
 
         private readonly IDictionary<PredictionContext, PredictionContext> contexts = new Dictionary<PredictionContext, PredictionContext>();
 
-        private readonly IDictionary<PredictionContextCache.PredictionContextAndInt, PredictionContext> childContexts = new Dictionary<PredictionContextCache.PredictionContextAndInt, PredictionContext>();
-
-        private readonly IDictionary<PredictionContextCache.IdentityCommutativePredictionContextOperands, PredictionContext> joinContexts = new Dictionary<PredictionContextCache.IdentityCommutativePredictionContextOperands, PredictionContext>();
-
         private readonly bool enableCache;
+
+        private readonly IDictionary<IdentityCommutativePredictionContextOperands, PredictionContext> joinContexts =
+            new Dictionary<IdentityCommutativePredictionContextOperands, PredictionContext>();
 
         public PredictionContextCache()
             : this(true)
@@ -42,12 +42,14 @@ namespace Antlr4.Runtime.Atn
             {
                 return context;
             }
+
             PredictionContext result;
             if (!contexts.TryGetValue(context, out result))
             {
                 result = context;
                 contexts[context] = context;
             }
+
             return result;
         }
 
@@ -57,7 +59,8 @@ namespace Antlr4.Runtime.Atn
             {
                 return context.GetChild(invokingState);
             }
-            PredictionContextCache.PredictionContextAndInt operands = new PredictionContextCache.PredictionContextAndInt(context, invokingState);
+
+            PredictionContextAndInt operands = new(context, invokingState);
             PredictionContext result;
             if (!childContexts.TryGetValue(operands, out result))
             {
@@ -65,6 +68,7 @@ namespace Antlr4.Runtime.Atn
                 result = GetAsCached(result);
                 childContexts[operands] = result;
             }
+
             return result;
         }
 
@@ -74,12 +78,14 @@ namespace Antlr4.Runtime.Atn
             {
                 return PredictionContext.Join(x, y, this);
             }
-            PredictionContextCache.IdentityCommutativePredictionContextOperands operands = new PredictionContextCache.IdentityCommutativePredictionContextOperands(x, y);
+
+            IdentityCommutativePredictionContextOperands operands = new(x, y);
             PredictionContext result;
             if (joinContexts.TryGetValue(operands, out result))
             {
                 return result;
             }
+
             result = PredictionContext.Join(x, y, this);
             result = GetAsCached(result);
             joinContexts[operands] = result;
@@ -100,19 +106,18 @@ namespace Antlr4.Runtime.Atn
 
             public override bool Equals(object obj)
             {
-                if (!(obj is PredictionContextCache.PredictionContextAndInt))
+                if (!(obj is PredictionContextAndInt))
                 {
                     return false;
                 }
-                else
+
+                if (obj == this)
                 {
-                    if (obj == this)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
-                PredictionContextCache.PredictionContextAndInt other = (PredictionContextCache.PredictionContextAndInt)obj;
-                return this.value == other.value && (this.obj == other.obj || (this.obj != null && this.obj.Equals(other.obj)));
+
+                PredictionContextAndInt other = (PredictionContextAndInt) obj;
+                return value == other.value && (this.obj == other.obj || this.obj != null && this.obj.Equals(other.obj));
             }
 
             public override int GetHashCode()
@@ -126,52 +131,35 @@ namespace Antlr4.Runtime.Atn
 
         protected internal sealed class IdentityCommutativePredictionContextOperands
         {
-            private readonly PredictionContext x;
-
-            private readonly PredictionContext y;
-
             public IdentityCommutativePredictionContextOperands(PredictionContext x, PredictionContext y)
             {
-                this.x = x;
-                this.y = y;
+                this.X = x;
+                this.Y = y;
             }
 
-            public PredictionContext X
-            {
-                get
-                {
-                    return x;
-                }
-            }
+            public PredictionContext X { get; }
 
-            public PredictionContext Y
-            {
-                get
-                {
-                    return y;
-                }
-            }
+            public PredictionContext Y { get; }
 
             public override bool Equals(object obj)
             {
-                if (!(obj is PredictionContextCache.IdentityCommutativePredictionContextOperands))
+                if (!(obj is IdentityCommutativePredictionContextOperands))
                 {
                     return false;
                 }
-                else
+
+                if (this == obj)
                 {
-                    if (this == obj)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
-                PredictionContextCache.IdentityCommutativePredictionContextOperands other = (PredictionContextCache.IdentityCommutativePredictionContextOperands)obj;
-                return (this.x == other.x && this.y == other.y) || (this.x == other.y && this.y == other.x);
+
+                IdentityCommutativePredictionContextOperands other = (IdentityCommutativePredictionContextOperands) obj;
+                return X == other.X && Y == other.Y || X == other.Y && Y == other.X;
             }
 
             public override int GetHashCode()
             {
-                return x.GetHashCode() ^ y.GetHashCode();
+                return X.GetHashCode() ^ Y.GetHashCode();
             }
         }
     }

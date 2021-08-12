@@ -2,26 +2,27 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
-using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime
 {
     /// <summary>
-    /// Vacuum all input from a
-    /// <see cref="System.IO.TextReader"/>
-    /// /
-    /// <see cref="System.IO.Stream"/>
-    /// and then treat it
-    /// like a
-    /// <c>char[]</c>
-    /// buffer. Can also pass in a
-    /// <see cref="string"/>
-    /// or
-    /// <c>char[]</c>
-    /// to use.
-    /// <p>If you need encoding, pass in stream/reader with correct encoding.</p>
+    ///     Vacuum all input from a
+    ///     <see cref="System.IO.TextReader" />
+    ///     /
+    ///     <see cref="System.IO.Stream" />
+    ///     and then treat it
+    ///     like a
+    ///     <c>char[]</c>
+    ///     buffer. Can also pass in a
+    ///     <see cref="string" />
+    ///     or
+    ///     <c>char[]</c>
+    ///     to use.
+    ///     <p>If you need encoding, pass in stream/reader with correct encoding.</p>
     /// </summary>
     public class AntlrInputStream : ICharStream
     {
@@ -35,11 +36,11 @@ namespace Antlr4.Runtime
         /// <summary>How many characters are actually in the buffer</summary>
         protected internal int n;
 
-        /// <summary>0..n-1 index into string of next char</summary>
-        protected internal int p = 0;
-
         /// <summary>What is name or source of this char stream?</summary>
         public string name;
+
+        /// <summary>0..n-1 index into string of next char</summary>
+        protected internal int p;
 
         public AntlrInputStream()
         {
@@ -48,82 +49,61 @@ namespace Antlr4.Runtime
         /// <summary>Copy data in string to a local char array</summary>
         public AntlrInputStream(string input)
         {
-            this.data = input.ToCharArray();
-            this.n = input.Length;
+            data = input.ToCharArray();
+            n = input.Length;
         }
 
         /// <summary>This is the preferred constructor for strings as no data is copied</summary>
         public AntlrInputStream(char[] data, int numberOfActualCharsInArray)
         {
             this.data = data;
-            this.n = numberOfActualCharsInArray;
+            n = numberOfActualCharsInArray;
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrInputStream(TextReader r)
             : this(r, InitialBufferSize, ReadBufferSize)
         {
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrInputStream(TextReader r, int initialSize)
             : this(r, initialSize, ReadBufferSize)
         {
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrInputStream(TextReader r, int initialSize, int readChunkSize)
         {
             Load(r, initialSize, readChunkSize);
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrInputStream(Stream input)
             : this(new StreamReader(input), InitialBufferSize)
         {
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrInputStream(Stream input, int initialSize)
             : this(new StreamReader(input), initialSize)
         {
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrInputStream(Stream input, int initialSize, int readChunkSize)
             : this(new StreamReader(input), initialSize, readChunkSize)
         {
-        }
-
-        /// <exception cref="System.IO.IOException"/>
-        public virtual void Load(TextReader r, int size, int readChunkSize)
-        {
-            if (r == null)
-            {
-                return;
-            }
-
-            data = r.ReadToEnd().ToCharArray();
-            n = data.Length;
-        }
-
-        /// <summary>
-        /// Reset the stream so that it's in the same state it was
-        /// when the object was created *except* the data array is not
-        /// touched.
-        /// </summary>
-        public virtual void Reset()
-        {
-            p = 0;
         }
 
         public virtual void Consume()
         {
             if (p >= n)
             {
-                System.Diagnostics.Debug.Assert(La(1) == IntStreamConstants.Eof);
+                Debug.Assert(La(1) == IntStreamConstants.Eof);
                 throw new InvalidOperationException("cannot consume EOF");
             }
+
             //System.out.println("prev p="+p+", c="+(char)data[p]);
             if (p < n)
             {
@@ -138,56 +118,42 @@ namespace Antlr4.Runtime
             {
                 return 0;
             }
+
             // undefined
             if (i < 0)
             {
                 i++;
                 // e.g., translate LA(-1) to use offset i=0; then data[p+0-1]
-                if ((p + i - 1) < 0)
+                if (p + i - 1 < 0)
                 {
                     return IntStreamConstants.Eof;
                 }
             }
+
             // invalid; no char before first char
-            if ((p + i - 1) >= n)
+            if (p + i - 1 >= n)
             {
                 //System.out.println("char LA("+i+")=EOF; p="+p);
                 return IntStreamConstants.Eof;
             }
+
             //System.out.println("char LA("+i+")="+(char)data[p+i-1]+"; p="+p);
             //System.out.println("LA("+i+"); p="+p+" n="+n+" data.length="+data.length);
             return data[p + i - 1];
         }
 
-        public virtual int Lt(int i)
-        {
-            return La(i);
-        }
-
         /// <summary>
-        /// Return the current input symbol index 0..n where n indicates the
-        /// last symbol has been read.
+        ///     Return the current input symbol index 0..n where n indicates the
+        ///     last symbol has been read.
         /// </summary>
         /// <remarks>
-        /// Return the current input symbol index 0..n where n indicates the
-        /// last symbol has been read.  The index is the index of char to
-        /// be returned from LA(1).
+        ///     Return the current input symbol index 0..n where n indicates the
+        ///     last symbol has been read.  The index is the index of char to
+        ///     be returned from LA(1).
         /// </remarks>
-        public virtual int Index
-        {
-            get
-            {
-                return p;
-            }
-        }
+        public virtual int Index => p;
 
-        public virtual int Size
-        {
-            get
-            {
-                return n;
-            }
-        }
+        public virtual int Size => n;
 
         /// <summary>mark/release do nothing; we have entire buffer</summary>
         public virtual int Mark()
@@ -200,12 +166,12 @@ namespace Antlr4.Runtime
         }
 
         /// <summary>
-        /// consume() ahead until p==index; can't just set p=index as we must
-        /// update line and charPositionInLine.
+        ///     consume() ahead until p==index; can't just set p=index as we must
+        ///     update line and charPositionInLine.
         /// </summary>
         /// <remarks>
-        /// consume() ahead until p==index; can't just set p=index as we must
-        /// update line and charPositionInLine. If we seek backwards, just set p
+        ///     consume() ahead until p==index; can't just set p=index as we must
+        ///     update line and charPositionInLine. If we seek backwards, just set p
         /// </remarks>
         public virtual void Seek(int index)
         {
@@ -215,6 +181,7 @@ namespace Antlr4.Runtime
                 // just jump; don't update stream state (line, ...)
                 return;
             }
+
             // seek forward, consume until p hits index or n (whichever comes first)
             index = Math.Min(index, n);
             while (p < index)
@@ -231,11 +198,13 @@ namespace Antlr4.Runtime
             {
                 stop = n - 1;
             }
+
             int count = stop - start + 1;
             if (start >= n)
             {
-                return string.Empty;
+                return String.Empty;
             }
+
             //		System.err.println("data: "+Arrays.toString(data)+", n="+n+
             //						   ", start="+start+
             //						   ", stop="+stop);
@@ -246,12 +215,40 @@ namespace Antlr4.Runtime
         {
             get
             {
-                if (string.IsNullOrEmpty(name))
+                if (String.IsNullOrEmpty(name))
                 {
                     return IntStreamConstants.UnknownSourceName;
                 }
+
                 return name;
             }
+        }
+
+        /// <exception cref="System.IO.IOException" />
+        public virtual void Load(TextReader r, int size, int readChunkSize)
+        {
+            if (r == null)
+            {
+                return;
+            }
+
+            data = r.ReadToEnd().ToCharArray();
+            n = data.Length;
+        }
+
+        /// <summary>
+        ///     Reset the stream so that it's in the same state it was
+        ///     when the object was created *except* the data array is not
+        ///     touched.
+        /// </summary>
+        public virtual void Reset()
+        {
+            p = 0;
+        }
+
+        public virtual int Lt(int i)
+        {
+            return La(i);
         }
 
         public override string ToString()

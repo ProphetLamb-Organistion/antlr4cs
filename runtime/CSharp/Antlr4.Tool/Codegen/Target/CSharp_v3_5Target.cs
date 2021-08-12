@@ -31,7 +31,6 @@
 namespace Antlr4.Codegen.Target
 {
     /**
-     *
      * @author Sam Harwell
      */
     public class CSharp_v3_5Target : CSharpTarget

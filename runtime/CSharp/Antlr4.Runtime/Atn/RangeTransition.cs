@@ -1,8 +1,14 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Utility;
+
 
 namespace Antlr4.Runtime.Atn
 {
@@ -19,21 +25,9 @@ namespace Antlr4.Runtime.Atn
             this.to = to;
         }
 
-        public override Antlr4.Runtime.Atn.TransitionType TransitionType
-        {
-            get
-            {
-                return Antlr4.Runtime.Atn.TransitionType.Range;
-            }
-        }
+        public override TransitionType TransitionType => TransitionType.Range;
 
-        public override IntervalSet Label
-        {
-            get
-            {
-                return IntervalSet.Of(from, to);
-            }
-        }
+        public override IntervalSet Label => IntervalSet.Of(from, to);
 
         public override bool Matches(int symbol, int minVocabSymbol, int maxVocabSymbol)
         {
@@ -43,7 +37,7 @@ namespace Antlr4.Runtime.Atn
         [return: NotNull]
         public override string ToString()
         {
-            return "'" + (char)from + "'..'" + (char)to + "'";
+            return "'" + (char) from + "'..'" + (char) to + "'";
         }
     }
 }

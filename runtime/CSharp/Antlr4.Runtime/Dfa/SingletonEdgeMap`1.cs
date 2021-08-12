@@ -1,9 +1,9 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Antlr4.Runtime.Sharpen;
+
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Dfa
 {
@@ -11,72 +11,45 @@ namespace Antlr4.Runtime.Dfa
     public sealed class SingletonEdgeMap<T> : AbstractEdgeMap<T>
         where T : class
     {
-        private readonly int key;
-
-        private readonly T value;
-
         public SingletonEdgeMap(int minIndex, int maxIndex, int key, T value)
             : base(minIndex, maxIndex)
         {
             if (key >= minIndex && key <= maxIndex)
             {
-                this.key = key;
-                this.value = value;
+                Key = key;
+                Value = value;
             }
             else
             {
-                this.key = 0;
-                this.value = null;
+                Key = 0;
+                Value = null;
             }
         }
 
-        public int Key
-        {
-            get
-            {
-                return key;
-            }
-        }
+        public int Key { get; }
 
-        public T Value
-        {
-            get
-            {
-                return value;
-            }
-        }
+        public T Value { get; }
 
-        public override int Count
-        {
-            get
-            {
-                return value != null ? 1 : 0;
-            }
-        }
+        public override int Count => Value != null ? 1 : 0;
 
-        public override bool IsEmpty
-        {
-            get
-            {
-                return value == null;
-            }
-        }
-
-        public override bool ContainsKey(int key)
-        {
-            return key == this.key && value != null;
-        }
+        public override bool IsEmpty => Value == null;
 
         public override T this[int key]
         {
             get
             {
-                if (key == this.key)
+                if (key == Key)
                 {
-                    return value;
+                    return Value;
                 }
+
                 return null;
             }
+        }
+
+        public override bool ContainsKey(int key)
+        {
+            return key == Key && Value != null;
         }
 
         public override AbstractEdgeMap<T> Put(int key, T value)
@@ -85,41 +58,40 @@ namespace Antlr4.Runtime.Dfa
             {
                 return this;
             }
-            if (key == this.key || this.value == null)
+
+            if (key == Key || Value == null)
             {
-                return new Antlr4.Runtime.Dfa.SingletonEdgeMap<T>(minIndex, maxIndex, key, value);
+                return new SingletonEdgeMap<T>(minIndex, maxIndex, key, value);
             }
-            else
+
+            if (value != null)
             {
-                if (value != null)
-                {
-                    AbstractEdgeMap<T> result = new SparseEdgeMap<T>(minIndex, maxIndex);
-                    result = result.Put(this.key, this.value);
-                    result = result.Put(key, value);
-                    return result;
-                }
-                else
-                {
-                    return this;
-                }
+                AbstractEdgeMap<T> result = new SparseEdgeMap<T>(minIndex, maxIndex);
+                result = result.Put(Key, Value);
+                result = result.Put(key, value);
+                return result;
             }
+
+            return this;
         }
 
         public override AbstractEdgeMap<T> Remove(int key)
         {
-            if (key == this.key && this.value != null)
+            if (key == Key && Value != null)
             {
                 return new EmptyEdgeMap<T>(minIndex, maxIndex);
             }
+
             return this;
         }
 
         public override AbstractEdgeMap<T> Clear()
         {
-            if (this.value != null)
+            if (Value != null)
             {
                 return new EmptyEdgeMap<T>(minIndex, maxIndex);
             }
+
             return this;
         }
 
@@ -127,9 +99,10 @@ namespace Antlr4.Runtime.Dfa
         {
             if (IsEmpty)
             {
-                return Sharpen.Collections.EmptyMap<int, T>();
+                return Collections.EmptyMap<int, T>();
             }
-            return Antlr4.Runtime.Sharpen.Collections.SingletonMap(key, value);
+
+            return Collections.SingletonMap(Key, Value);
         }
     }
 }

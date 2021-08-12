@@ -1,48 +1,58 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using System.Linq;
+using Antlr4.Analysis;
+using Antlr4.Codegen.Model;
+using Antlr4.Codegen.Model.Decl;
+using Antlr4.Misc;
+using Antlr4.Parse;
+using Antlr4.Runtime;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+using Parser = Antlr4.Codegen.Model.Parser;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using Antlr4.Analysis;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Codegen.Model.Decl;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using CommonTreeNodeStream = Antlr.Runtime.Tree.CommonTreeNodeStream;
-
-    /** This receives events from SourceGenTriggers.g and asks factory to do work.
-     *  Then runs extensions in order on resulting SrcOps to get final list.
-     **/
+    /**
+     * This receives events from SourceGenTriggers.g and asks factory to do work.
+     * Then runs extensions in order on resulting SrcOps to get final list.
+     */
     public class OutputModelController
     {
-        /** Who does the work? Doesn't have to be CoreOutputModelFactory. */
+        /**
+         * Context set by the SourceGenTriggers.g
+         */
+        public int codeBlockLevel = -1;
+
+        public CodeBlock currentBlock;
+        public Alternative currentOuterMostAlt;
+        public CodeBlockForOuterMostAlt currentOuterMostAlternativeBlock;
+        public Stack<RuleFunction> currentRule = new();
+
+        /**
+         * Who does the work? Doesn't have to be CoreOutputModelFactory.
+         */
         public OutputModelFactory @delegate;
 
-        /** Post-processing CodeGeneratorExtension objects; done in order given. */
+        /**
+         * Post-processing CodeGeneratorExtension objects; done in order given.
+         */
         public IList<CodeGeneratorExtension> extensions = new List<CodeGeneratorExtension>();
 
-        /** While walking code in rules, this is set to the tree walker that
-         *  triggers actions.
+        public OutputModelObject root; // normally ParserFile, LexerFile, ...
+        public int treeLevel = -1;
+
+        /**
+         * While walking code in rules, this is set to the tree walker that
+         * triggers actions.
          */
         public SourceGenTriggers walker;
 
-        /** Context set by the SourceGenTriggers.g */
-        public int codeBlockLevel = -1;
-        public int treeLevel = -1;
-        public OutputModelObject root; // normally ParserFile, LexerFile, ...
-        public Stack<RuleFunction> currentRule = new Stack<RuleFunction>();
-        public Alternative currentOuterMostAlt;
-        public CodeBlock currentBlock;
-        public CodeBlockForOuterMostAlt currentOuterMostAlternativeBlock;
-
         public OutputModelController(OutputModelFactory factory)
         {
-            this.@delegate = factory;
+            @delegate = factory;
         }
 
         public virtual void AddExtension(CodeGeneratorExtension ext)
@@ -50,9 +60,10 @@ namespace Antlr4.Codegen
             extensions.Add(ext);
         }
 
-        /** Build a file with a parser containing rule functions. Use the
-         *  controller as factory in SourceGenTriggers so it triggers code generation
-         *  extensions too, not just the factory functions in this factory.
+        /**
+         * Build a file with a parser containing rule functions. Use the
+         * controller as factory in SourceGenTriggers so it triggers code generation
+         * extensions too, not just the factory functions in this factory.
          */
         public virtual OutputModelObject BuildParserOutputModel(bool header)
         {
@@ -114,7 +125,10 @@ namespace Antlr4.Codegen
         {
             ParserFile f = @delegate.ParserFile(fileName);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 f = ext.ParserFile(f);
+            }
+
             return f;
         }
 
@@ -122,7 +136,10 @@ namespace Antlr4.Codegen
         {
             Parser p = @delegate.Parser(file);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 p = ext.Parser(p);
+            }
+
             return p;
         }
 
@@ -136,8 +153,9 @@ namespace Antlr4.Codegen
             return new Lexer(@delegate, file);
         }
 
-        /** Create RuleFunction per rule and update semantic predicates, actions of parser
-         *  output object with stuff found in r.
+        /**
+         * Create RuleFunction per rule and update semantic predicates, actions of parser
+         * output object with stuff found in r.
          */
         public virtual void BuildRuleFunction(Parser parser, Rule r)
         {
@@ -148,8 +166,8 @@ namespace Antlr4.Codegen
 
             if (r is LeftRecursiveRule)
             {
-                BuildLeftRecursiveRuleFunction((LeftRecursiveRule)r,
-                                               (LeftRecursiveRuleFunction)function);
+                BuildLeftRecursiveRuleFunction((LeftRecursiveRule) r,
+                    (LeftRecursiveRuleFunction) function);
             }
             else
             {
@@ -161,13 +179,14 @@ namespace Antlr4.Codegen
             {
                 if (a is PredAST)
                 {
-                    PredAST p = (PredAST)a;
+                    PredAST p = (PredAST) a;
                     RuleSempredFunction rsf;
                     if (!parser.sempredFuncs.TryGetValue(r, out rsf) || rsf == null)
                     {
                         rsf = new RuleSempredFunction(@delegate, r, function.ctxType);
                         parser.sempredFuncs[r] = rsf;
                     }
+
                     rsf.actions[g.sempreds[p]] = new Action(@delegate, p);
                 }
             }
@@ -184,64 +203,80 @@ namespace Antlr4.Codegen
             TemplateGroup codegenTemplates = target.GetTemplates();
 
             // pick out alt(s) for primaries
-            CodeBlockForOuterMostAlt outerAlt = (CodeBlockForOuterMostAlt)function.code[0];
+            CodeBlockForOuterMostAlt outerAlt = (CodeBlockForOuterMostAlt) function.code[0];
             IList<CodeBlockForAlt> primaryAltsCode = new List<CodeBlockForAlt>();
             SrcOp primaryStuff = outerAlt.ops[0];
             if (primaryStuff is Choice)
             {
-                Choice primaryAltBlock = (Choice)primaryStuff;
-                foreach (var alt in primaryAltBlock.alts)
+                Choice primaryAltBlock = (Choice) primaryStuff;
+                foreach (CodeBlockForAlt alt in primaryAltBlock.alts)
+                {
                     primaryAltsCode.Add(alt);
+                }
             }
             else
-            { // just a single alt I guess; no block
-                primaryAltsCode.Add((CodeBlockForAlt)primaryStuff);
+            {
+                // just a single alt I guess; no block
+                primaryAltsCode.Add((CodeBlockForAlt) primaryStuff);
             }
 
             // pick out alt(s) for op alts
-            StarBlock opAltStarBlock = (StarBlock)outerAlt.ops[1];
+            StarBlock opAltStarBlock = (StarBlock) outerAlt.ops[1];
             CodeBlockForAlt altForOpAltBlock = opAltStarBlock.alts[0];
             IList<CodeBlockForAlt> opAltsCode = new List<CodeBlockForAlt>();
             SrcOp opStuff = altForOpAltBlock.ops[0];
             if (opStuff is AltBlock)
             {
-                AltBlock opAltBlock = (AltBlock)opStuff;
-                foreach (var alt in opAltBlock.alts)
+                AltBlock opAltBlock = (AltBlock) opStuff;
+                foreach (CodeBlockForAlt alt in opAltBlock.alts)
+                {
                     opAltsCode.Add(alt);
+                }
             }
             else
-            { // just a single alt I guess; no block
-                opAltsCode.Add((CodeBlockForAlt)opStuff);
+            {
+                // just a single alt I guess; no block
+                opAltsCode.Add((CodeBlockForAlt) opStuff);
             }
 
             // Insert code in front of each primary alt to create specialized context if there was a label
-            for (int i = 0; i < primaryAltsCode.Count; i++)
+            for (int i = 0;
+                i < primaryAltsCode.Count;
+                i++)
             {
                 LeftRecursiveRuleAltInfo altInfo = r.recPrimaryAlts[i];
                 if (altInfo.altLabel == null)
+                {
                     continue;
+                }
+
                 Template altActionST = codegenTemplates.GetInstanceOf("recRuleReplaceContext");
                 altActionST.Add("ctxName", Utils.Capitalize(altInfo.altLabel));
                 AltLabelStructDecl ctx = null;
                 if (altInfo.altLabel != null)
+                {
                     function.altLabelCtxs.TryGetValue(altInfo.altLabel, out ctx);
-                Action altAction = new Action(@delegate, ctx, altActionST);
+                }
+
+                Action altAction = new(@delegate, ctx, altActionST);
                 CodeBlockForAlt alt = primaryAltsCode[i];
                 alt.InsertOp(0, altAction);
             }
 
             // Insert code to set ctx.stop after primary block and before op * loop
             Template setStopTokenAST = codegenTemplates.GetInstanceOf("recRuleSetStopToken");
-            Action setStopTokenAction = new Action(@delegate, function.ruleCtx, setStopTokenAST);
+            Action setStopTokenAction = new(@delegate, function.ruleCtx, setStopTokenAST);
             outerAlt.InsertOp(1, setStopTokenAction);
 
             // Insert code to set _prevctx at start of * loop
             Template setPrevCtx = codegenTemplates.GetInstanceOf("recRuleSetPrevCtx");
-            Action setPrevCtxAction = new Action(@delegate, function.ruleCtx, setPrevCtx);
+            Action setPrevCtxAction = new(@delegate, function.ruleCtx, setPrevCtx);
             opAltStarBlock.AddIterationOp(setPrevCtxAction);
 
             // Insert code in front of each op alt to create specialized context if there was an alt label
-            for (int i = 0; i < opAltsCode.Count; i++)
+            for (int i = 0;
+                i < opAltsCode.Count;
+                i++)
             {
                 Template altActionST;
                 LeftRecursiveRuleAltInfo altInfo = r.recOpAlts.GetElement(i);
@@ -258,6 +293,7 @@ namespace Antlr4.Codegen
                     altActionST = codegenTemplates.GetInstanceOf(templateName);
                     altActionST.Add("ctxName", Utils.Capitalize(r.name));
                 }
+
                 altActionST.Add("ruleName", r.name);
                 // add label of any LR ref we deleted
                 altActionST.Add("label", altInfo.leftRecursiveRuleRefLabel);
@@ -269,10 +305,14 @@ namespace Antlr4.Codegen
                 {
                     @delegate.GetGenerator().tool.errMgr.ToolError(ErrorType.CODE_TEMPLATE_ARG_ISSUE, templateName, "isListLabel");
                 }
+
                 AltLabelStructDecl ctx = null;
                 if (altInfo.altLabel != null)
+                {
                     function.altLabelCtxs.TryGetValue(altInfo.altLabel, out ctx);
-                Action altAction = new Action(@delegate, ctx, altActionST);
+                }
+
+                Action altAction = new(@delegate, ctx, altActionST);
                 CodeBlockForAlt alt = opAltsCode[i];
                 alt.InsertOp(0, altAction);
             }
@@ -282,9 +322,9 @@ namespace Antlr4.Codegen
         {
             CodeGenerator gen = @delegate.GetGenerator();
             // TRIGGER factory functions for rule alts, elements
-            GrammarASTAdaptor adaptor = new GrammarASTAdaptor(r.ast.Token.InputStream);
-            GrammarAST blk = (GrammarAST)r.ast.GetFirstChildWithType(ANTLRParser.BLOCK);
-            CommonTreeNodeStream nodes = new CommonTreeNodeStream(adaptor, blk);
+            GrammarASTAdaptor adaptor = new(r.ast.Token.InputStream);
+            GrammarAST blk = (GrammarAST) r.ast.GetFirstChildWithType(ANTLRParser.BLOCK);
+            CommonTreeNodeStream nodes = new(adaptor, blk);
             walker = new SourceGenTriggers(nodes, this);
             try
             {
@@ -292,7 +332,7 @@ namespace Antlr4.Codegen
                 function.code = DefaultOutputModelFactory.List(walker.block(null, null));
                 function.hasLookaheadBlock = walker.hasLookaheadBlock;
             }
-            catch (Antlr.Runtime.RecognitionException e)
+            catch (RecognitionException e)
             {
                 @delegate.GetGenerator().tool.ConsoleError.WriteLine(e.Message);
                 @delegate.GetGenerator().tool.ConsoleError.WriteLine(e.StackTrace);
@@ -323,13 +363,14 @@ namespace Antlr4.Codegen
             {
                 if (a is PredAST)
                 {
-                    PredAST p = (PredAST)a;
-                    RuleSempredFunction rsf ;
+                    PredAST p = (PredAST) a;
+                    RuleSempredFunction rsf;
                     if (!lexer.sempredFuncs.TryGetValue(r, out rsf) || rsf == null)
                     {
                         rsf = new RuleSempredFunction(@delegate, r, ctxType);
                         lexer.sempredFuncs[r] = rsf;
                     }
+
                     rsf.actions[g.sempreds[p]] = new Action(@delegate, p);
                 }
                 else if (a.Type == ANTLRParser.ACTION)
@@ -349,7 +390,10 @@ namespace Antlr4.Codegen
         {
             RuleFunction rf = @delegate.Rule(r);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 rf = ext.Rule(rf);
+            }
+
             return rf;
         }
 
@@ -357,7 +401,9 @@ namespace Antlr4.Codegen
         {
             IList<SrcOp> ops = @delegate.RulePostamble(function, r);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 ops = ext.RulePostamble(ops);
+            }
 
             return ops;
         }
@@ -377,19 +423,26 @@ namespace Antlr4.Codegen
             CodeBlockForAlt blk = @delegate.Alternative(alt, outerMost);
             if (outerMost)
             {
-                currentOuterMostAlternativeBlock = (CodeBlockForOuterMostAlt)blk;
+                currentOuterMostAlternativeBlock = (CodeBlockForOuterMostAlt) blk;
             }
+
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 blk = ext.Alternative(blk, outerMost);
+            }
+
             return blk;
         }
 
         public virtual CodeBlockForAlt FinishAlternative(CodeBlockForAlt blk, IList<SrcOp> ops,
-                                                 bool outerMost)
+            bool outerMost)
         {
             blk = @delegate.FinishAlternative(blk, ops);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 blk = ext.FinishAlternative(blk, outerMost);
+            }
+
             return blk;
         }
 
@@ -400,6 +453,7 @@ namespace Antlr4.Codegen
             {
                 ops = ext.RuleRef(ops);
             }
+
             return ops;
         }
 
@@ -410,6 +464,7 @@ namespace Antlr4.Codegen
             {
                 ops = ext.TokenRef(ops);
             }
+
             return ops;
         }
 
@@ -420,10 +475,13 @@ namespace Antlr4.Codegen
             {
                 ops = ext.StringRef(ops);
             }
+
             return ops;
         }
 
-        /** (A|B|C) possibly with ebnfRoot and label */
+        /**
+         * (A|B|C) possibly with ebnfRoot and label
+         */
         public IList<SrcOp> Set(GrammarAST setAST, GrammarAST labelAST, bool invert)
         {
             IList<SrcOp> ops = @delegate.Set(setAST, labelAST, invert);
@@ -431,6 +489,7 @@ namespace Antlr4.Codegen
             {
                 ops = ext.Set(ops);
             }
+
             return ops;
         }
 
@@ -438,7 +497,10 @@ namespace Antlr4.Codegen
         {
             CodeBlockForAlt blk = @delegate.Epsilon(alt, outerMost);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 blk = ext.Epsilon(blk);
+            }
+
             return blk;
         }
 
@@ -449,6 +511,7 @@ namespace Antlr4.Codegen
             {
                 ops = ext.Wildcard(ops);
             }
+
             return ops;
         }
 
@@ -456,7 +519,10 @@ namespace Antlr4.Codegen
         {
             IList<SrcOp> ops = @delegate.Action(ast);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 ops = ext.Action(ops);
+            }
+
             return ops;
         }
 
@@ -464,7 +530,10 @@ namespace Antlr4.Codegen
         {
             IList<SrcOp> ops = @delegate.Sempred(ast);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 ops = ext.Sempred(ops);
+            }
+
             return ops;
         }
 
@@ -472,7 +541,10 @@ namespace Antlr4.Codegen
         {
             Choice c = @delegate.GetChoiceBlock(blkAST, alts, label);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 c = ext.GetChoiceBlock(c);
+            }
+
             return c;
         }
 
@@ -480,7 +552,10 @@ namespace Antlr4.Codegen
         {
             Choice c = @delegate.GetEBNFBlock(ebnfRoot, alts);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 c = ext.GetEBNFBlock(c);
+            }
+
             return c;
         }
 
@@ -488,7 +563,10 @@ namespace Antlr4.Codegen
         {
             bool needs = @delegate.NeedsImplicitLabel(ID, op);
             foreach (CodeGeneratorExtension ext in extensions)
+            {
                 needs |= ext.NeedsImplicitLabel(ID, op);
+            }
+
             return needs;
         }
 
@@ -505,7 +583,10 @@ namespace Antlr4.Codegen
         public virtual RuleFunction GetCurrentRuleFunction()
         {
             if (currentRule.Count > 0)
+            {
                 return currentRule.Peek();
+            }
+
             return null;
         }
 
@@ -517,7 +598,10 @@ namespace Antlr4.Codegen
         public virtual RuleFunction PopCurrentRule()
         {
             if (currentRule.Count > 0)
+            {
                 return currentRule.Pop();
+            }
+
             return null;
         }
 

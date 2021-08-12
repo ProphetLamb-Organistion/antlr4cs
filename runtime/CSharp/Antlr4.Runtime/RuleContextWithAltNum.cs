@@ -2,15 +2,14 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using Antlr4.Runtime.Atn;
-using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime
 {
     /// <summary>
-    /// A handy class for use with
-    /// options {contextSuperClass=org.antlr.v4.runtime.RuleContextWithAltNum;}
-    /// that provides a property for the outer alternative number
-    /// matched for an internal parse tree node.
+    ///     A handy class for use with
+    ///     options {contextSuperClass=org.antlr.v4.runtime.RuleContextWithAltNum;}
+    ///     that provides a property for the outer alternative number
+    ///     matched for an internal parse tree node.
     /// </summary>
     public class RuleContextWithAltNum : ParserRuleContext
     {
@@ -28,14 +27,11 @@ namespace Antlr4.Runtime
 
         public override int OuterAlternative
         {
-            get
-            {
-                return altNumber;
-            }
+            get => altNumber;
             set
             {
                 int altNum = value;
-                this.altNumber = altNum;
+                altNumber = altNum;
             }
         }
     }

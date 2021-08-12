@@ -3,13 +3,15 @@
 
 namespace Antlr4.Tool
 {
-    /** the various kinds of labels. t=type, id=ID, types+=type ids+=ID */
+    /**
+     * the various kinds of labels. t=type, id=ID, types+=type ids+=ID
+     */
     public enum LabelType
     {
         RULE_LABEL,
         TOKEN_LABEL,
         RULE_LIST_LABEL,
         TOKEN_LIST_LABEL,
-        LEXER_STRING_LABEL         // used in lexer for x='a'
+        LEXER_STRING_LABEL // used in lexer for x='a'
     }
 }

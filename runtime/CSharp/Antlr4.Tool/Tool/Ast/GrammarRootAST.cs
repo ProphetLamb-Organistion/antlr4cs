@@ -1,37 +1,44 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+
 namespace Antlr4.Tool.Ast
 {
-    using System.Collections.Generic;
-    using ArgumentNullException = System.ArgumentNullException;
-    using IToken = Antlr.Runtime.IToken;
-    using ITokenStream = Antlr.Runtime.ITokenStream;
-    using ITree = Antlr.Runtime.Tree.ITree;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-
     public class GrammarRootAST : GrammarASTWithOptions
     {
         public static readonly IDictionary<string, string> defaultOptions = new Dictionary<string, string>
         {
-            { "language", "Java" },
-            { "abstract", "false" }
+            {"language", "Java"},
+            {"abstract", "false"}
         };
+
+        /**
+         * Track stream used to create this tree
+         */
+        [NotNull] public readonly ITokenStream tokenStream;
+
+        public IDictionary<string, string> cmdLineOptions; // -DsuperClass=T on command line
+        public string fileName;
 
         public int grammarType; // LEXER, PARSER, GRAMMAR (combined)
         public bool hasErrors;
-        /** Track stream used to create this tree */
-        [NotNull]
-        public readonly ITokenStream tokenStream;
-        public IDictionary<string, string> cmdLineOptions; // -DsuperClass=T on command line
-        public string fileName;
 
         public GrammarRootAST(GrammarRootAST node)
             : base(node)
         {
-            this.grammarType = node.grammarType;
-            this.hasErrors = node.hasErrors;
-            this.tokenStream = node.tokenStream;
+            grammarType = node.grammarType;
+            hasErrors = node.hasErrors;
+            tokenStream = node.tokenStream;
         }
 
         public GrammarRootAST(IToken t, ITokenStream tokenStream)
@@ -71,7 +78,10 @@ namespace Antlr4.Tool.Ast
         {
             ITree t = GetChild(0);
             if (t != null)
+            {
                 return t.Text;
+            }
+
             return null;
         }
 
@@ -81,11 +91,13 @@ namespace Antlr4.Tool.Ast
             {
                 return cmdLineOptions[key];
             }
+
             string value = base.GetOptionString(key);
             if (value == null)
             {
                 defaultOptions.TryGetValue(key, out value);
             }
+
             return value;
         }
 

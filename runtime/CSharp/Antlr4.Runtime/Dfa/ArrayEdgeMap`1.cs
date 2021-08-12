@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Antlr4.Runtime.Sharpen;
-using Interlocked = System.Threading.Interlocked;
+using System.Diagnostics;
+using System.Threading;
+
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Dfa
 {
@@ -23,26 +25,9 @@ namespace Antlr4.Runtime.Dfa
             arrayData = new T[maxIndex - minIndex + 1];
         }
 
-        public override int Count
-        {
-            get
-            {
-                return Interlocked.CompareExchange(ref size, 0, 0);
-            }
-        }
+        public override int Count => Volatile.Read(ref size);
 
-        public override bool IsEmpty
-        {
-            get
-            {
-                return Count == 0;
-            }
-        }
-
-        public override bool ContainsKey(int key)
-        {
-            return this[key] != null;
-        }
+        public override bool IsEmpty => Count == 0;
 
         public override T this[int key]
         {
@@ -53,8 +38,13 @@ namespace Antlr4.Runtime.Dfa
                     return null;
                 }
 
-                return Interlocked.CompareExchange(ref arrayData[key - minIndex], n
+                return Volatile.Read(ref arrayData[key - minIndex]);
             }
+        }
+
+        public override bool ContainsKey(int key)
+        {
+            return this[key] != null;
         }
 
         public override AbstractEdgeMap<T> Put(int key, T value)
@@ -74,6 +64,7 @@ namespace Antlr4.Runtime.Dfa
                     }
                 }
             }
+
             return this;
         }
 
@@ -88,49 +79,50 @@ namespace Antlr4.Runtime.Dfa
             {
                 return this;
             }
-            if (m is Antlr4.Runtime.Dfa.ArrayEdgeMap<T>)
+
+            if (m is ArrayEdgeMap<T>)
             {
-                Antlr4.Runtime.Dfa.ArrayEdgeMap<T> other = (Antlr4.Runtime.Dfa.ArrayEdgeMap<T>)m;
+                var other = (ArrayEdgeMap<T>) m;
                 int minOverlap = Math.Max(minIndex, other.minIndex);
                 int maxOverlap = Math.Min(maxIndex, other.maxIndex);
-                Antlr4.Runtime.Dfa.ArrayEdgeMap<T> result = this;
-                for (int i = minOverlap; i <= maxOverlap; i++)
+                ArrayEdgeMap<T> result = this;
+                for (int i = minOverlap;
+                    i <= maxOverlap;
+                    i++)
                 {
-                    result = ((Antlr4.Runtime.Dfa.ArrayEdgeMap<T>)result.Put(i, m[i]));
+                    result = (ArrayEdgeMap<T>) result.Put(i, m[i]);
                 }
+
                 return result;
             }
-            else
+
+            if (m is SingletonEdgeMap<T>)
             {
-                if (m is SingletonEdgeMap<T>)
+                var other = (SingletonEdgeMap<T>) m;
+                Debug.Assert(!other.IsEmpty);
+                return Put(other.Key, other.Value);
+            }
+
+            if (m is SparseEdgeMap<T>)
+            {
+                var other = (SparseEdgeMap<T>) m;
+                lock (other)
                 {
-                    SingletonEdgeMap<T> other = (SingletonEdgeMap<T>)m;
-                    System.Diagnostics.Debug.Assert(!other.IsEmpty);
-                    return Put(other.Key, other.Value);
-                }
-                else
-                {
-                    if (m is SparseEdgeMap<T>)
+                    int[] keys = other.Keys;
+                    IList<T> values = other.Values;
+                    ArrayEdgeMap<T> result = this;
+                    for (int i = 0;
+                        i < values.Count;
+                        i++)
                     {
-                        SparseEdgeMap<T> other = (SparseEdgeMap<T>)m;
-                        lock (other)
-                        {
-                            int[] keys = other.Keys;
-                            IList<T> values = other.Values;
-                            Antlr4.Runtime.Dfa.ArrayEdgeMap<T> result = this;
-                            for (int i = 0; i < values.Count; i++)
-                            {
-                                result = ((Antlr4.Runtime.Dfa.ArrayEdgeMap<T>)result.Put(keys[i], values[i]));
-                            }
-                            return result;
-                        }
+                        result = (ArrayEdgeMap<T>) result.Put(keys[i], values[i]);
                     }
-                    else
-                    {
-                        throw new NotSupportedException(string.Format("EdgeMap of type {0} is supported yet.", m.GetType().FullName));
-                    }
+
+                    return result;
                 }
             }
+
+            throw new NotSupportedException($"EdgeMap of type {m.GetType().FullName} is supported yet.");
         }
 
         public override AbstractEdgeMap<T> Clear()
@@ -142,7 +134,7 @@ namespace Antlr4.Runtime.Dfa
         {
             if (IsEmpty)
             {
-                return Sharpen.Collections.EmptyMap<int, T>();
+                return Collections.EmptyMap<int, T>();
             }
 
 #if COMPACT
@@ -152,15 +144,19 @@ namespace Antlr4.Runtime.Dfa
 #else
             IDictionary<int, T> result = new SortedDictionary<int, T>();
 #endif
-            for (int i = 0; i < arrayData.Length; i++)
+            for (int i = 0;
+                i < arrayData.Length;
+                i++)
             {
                 T element = arrayData[i];
                 if (element == null)
                 {
                     continue;
                 }
+
                 result[i + minIndex] = element;
             }
+
             return new ReadOnlyDictionary<int, T>(result);
         }
     }

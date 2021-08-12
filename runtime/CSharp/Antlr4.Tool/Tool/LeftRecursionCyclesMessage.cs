@@ -1,11 +1,12 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+
+using Antlr4.Runtime;
+
 namespace Antlr4.Tool
 {
-    using System.Collections.Generic;
-    using IToken = Antlr.Runtime.IToken;
-
     public class LeftRecursionCyclesMessage : ANTLRMessage
     {
         public LeftRecursionCyclesMessage(string fileName, IEnumerable<IEnumerable<Rule>> cycles)
@@ -36,6 +37,7 @@ namespace Antlr4.Tool
                     }
                 }
             }
+
             return null;
         }
     }

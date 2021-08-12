@@ -2,8 +2,6 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Antlr4.Runtime.Sharpen;
-using Antlr4.Runtime.Tree;
 
 namespace Antlr4.Runtime.Tree.Xpath
 {
@@ -25,13 +23,14 @@ namespace Antlr4.Runtime.Tree.Xpath
             {
                 if (c is ITerminalNode)
                 {
-                    ITerminalNode tnode = (ITerminalNode)c;
-                    if ((tnode.Symbol.Type == tokenType && !invert) || (tnode.Symbol.Type != tokenType && invert))
+                    ITerminalNode tnode = (ITerminalNode) c;
+                    if (tnode.Symbol.Type == tokenType && !invert || tnode.Symbol.Type != tokenType && invert)
                     {
                         nodes.Add(tnode);
                     }
                 }
             }
+
             return nodes;
         }
     }

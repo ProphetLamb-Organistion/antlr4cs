@@ -1,106 +1,94 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using Antlr4.Runtime;
+using System;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime.Atn
 {
     /// <summary>
-    /// Implements the
-    /// <c>channel</c>
-    /// lexer action by calling
-    /// <see cref="Lexer.Channel"/>
-    /// with the assigned channel.
+    ///     Implements the
+    ///     <c>channel</c>
+    ///     lexer action by calling
+    ///     <see cref="Lexer.Channel" />
+    ///     with the assigned channel.
     /// </summary>
     /// <author>Sam Harwell</author>
     /// <since>4.2</since>
     public sealed class LexerChannelAction : ILexerAction
     {
-        private readonly int channel;
-
         /// <summary>
-        /// Constructs a new
-        /// <paramref name="channel"/>
-        /// action with the specified channel value.
+        ///     Constructs a new
+        ///     <paramref name="channel" />
+        ///     action with the specified channel value.
         /// </summary>
         /// <param name="channel">
-        /// The channel value to pass to
-        /// <see cref="Lexer.Channel"/>
-        /// .
+        ///     The channel value to pass to
+        ///     <see cref="Lexer.Channel" />
+        ///     .
         /// </param>
         public LexerChannelAction(int channel)
         {
-            this.channel = channel;
+            this.Channel = channel;
         }
 
         /// <summary>
-        /// Gets the channel to use for the
-        /// <see cref="Antlr4.Runtime.IToken"/>
-        /// created by the lexer.
+        ///     Gets the channel to use for the
+        ///     <see cref="Antlr4.Runtime.IToken" />
+        ///     created by the lexer.
         /// </summary>
         /// <returns>
-        /// The channel to use for the
-        /// <see cref="Antlr4.Runtime.IToken"/>
-        /// created by the lexer.
+        ///     The channel to use for the
+        ///     <see cref="Antlr4.Runtime.IToken" />
+        ///     created by the lexer.
         /// </returns>
-        public int Channel
-        {
-            get
-            {
-                return channel;
-            }
-        }
-
-        /// <summary><inheritDoc/></summary>
-        /// <returns>
-        /// This method returns
-        /// <see cref="LexerActionType.Channel"/>
-        /// .
-        /// </returns>
-        public LexerActionType ActionType
-        {
-            get
-            {
-                return LexerActionType.Channel;
-            }
-        }
-
-        /// <summary><inheritDoc/></summary>
-        /// <returns>
-        /// This method returns
-        /// <see langword="false"/>
-        /// .
-        /// </returns>
-        public bool IsPositionDependent
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public int Channel { get; }
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>This action is implemented by calling
-        /// <see cref="Lexer.Channel"/>
-        /// with the
-        /// value provided by
-        /// <see cref="Channel()"/>
-        /// .</p>
+        ///     <inheritDoc />
+        /// </summary>
+        /// <returns>
+        ///     This method returns
+        ///     <see cref="LexerActionType.Channel" />
+        ///     .
+        /// </returns>
+        public LexerActionType ActionType => LexerActionType.Channel;
+
+        /// <summary>
+        ///     <inheritDoc />
+        /// </summary>
+        /// <returns>
+        ///     This method returns
+        ///     <see langword="false" />
+        ///     .
+        /// </returns>
+        public bool IsPositionDependent => false;
+
+        /// <summary>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         This action is implemented by calling
+        ///         <see cref="Lexer.Channel" />
+        ///         with the
+        ///         value provided by
+        ///         <see cref="Channel()" />
+        ///         .
+        ///     </p>
         /// </summary>
         public void Execute([NotNull] Lexer lexer)
         {
-            lexer.Channel = channel;
+            lexer.Channel = Channel;
         }
 
         public override int GetHashCode()
         {
-            int hash = MurmurHash.Initialize();
-            hash = MurmurHash.Update(hash, (int)(ActionType));
-            hash = MurmurHash.Update(hash, channel);
-            return MurmurHash.Finish(hash, 2);
+            return HashCode.Combine(ActionType, Channel);
         }
 
         public override bool Equals(object obj)
@@ -109,19 +97,18 @@ namespace Antlr4.Runtime.Atn
             {
                 return true;
             }
-            else
+
+            if (!(obj is LexerChannelAction))
             {
-                if (!(obj is Antlr4.Runtime.Atn.LexerChannelAction))
-                {
-                    return false;
-                }
+                return false;
             }
-            return channel == ((Antlr4.Runtime.Atn.LexerChannelAction)obj).channel;
+
+            return Channel == ((LexerChannelAction) obj).Channel;
         }
 
         public override string ToString()
         {
-            return string.Format("channel({0})", channel);
+            return $"channel({Channel})";
         }
     }
 }

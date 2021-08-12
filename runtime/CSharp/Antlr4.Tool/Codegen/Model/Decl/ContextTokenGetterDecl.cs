@@ -3,7 +3,9 @@
 
 namespace Antlr4.Codegen.Model.Decl
 {
-    /** {@code public Token X() { }} */
+    /**
+     * {@code public Token X() { }}
+     */
     public class ContextTokenGetterDecl : ContextGetterDecl
     {
         public bool optional;

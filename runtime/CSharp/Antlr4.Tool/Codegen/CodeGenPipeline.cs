@@ -1,15 +1,13 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using Antlr4.Parse;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-
     public class CodeGenPipeline
     {
         internal Grammar g;
@@ -21,14 +19,14 @@ namespace Antlr4.Codegen
 
         public virtual void Process()
         {
-            CodeGenerator gen = new CodeGenerator(g);
+            CodeGenerator gen = new(g);
             AbstractTarget target = gen.GetTarget();
             if (target == null)
             {
                 return;
             }
 
-            IntervalSet idTypes = new IntervalSet();
+            IntervalSet idTypes = new();
             idTypes.Add(ANTLRParser.ID);
             idTypes.Add(ANTLRParser.RULE_REF);
             idTypes.Add(ANTLRParser.TOKEN_REF);
@@ -38,8 +36,8 @@ namespace Antlr4.Codegen
                 if (target.GrammarSymbolCausesIssueInGeneratedCode(idNode))
                 {
                     g.tool.errMgr.GrammarError(ErrorType.USE_OF_BAD_WORD,
-                                               g.fileName, idNode.Token,
-                                               idNode.Text);
+                        g.fileName, idNode.Token,
+                        idNode.Text);
                 }
             }
 
@@ -58,6 +56,7 @@ namespace Antlr4.Codegen
                         WriteRecognizer(lexerHeader, gen, true);
                     }
                 }
+
                 Template lexer = gen.GenerateLexer(false);
                 if (g.tool.errMgr.GetNumErrors() == errorCount)
                 {
@@ -74,6 +73,7 @@ namespace Antlr4.Codegen
                         WriteRecognizer(parserHeader, gen, true);
                     }
                 }
+
                 Template parser = gen.GenerateParser(false);
                 if (g.tool.errMgr.GetNumErrors() == errorCount)
                 {
@@ -90,6 +90,7 @@ namespace Antlr4.Codegen
                             gen.WriteListener(listenerHeader, true);
                         }
                     }
+
                     Template listener = gen.GenerateListener(false);
                     if (g.tool.errMgr.GetNumErrors() == errorCount)
                     {
@@ -104,6 +105,7 @@ namespace Antlr4.Codegen
                             gen.WriteBaseListener(baseListener, true);
                         }
                     }
+
                     if (target.WantsBaseListener())
                     {
                         Template baseListener = gen.GenerateBaseListener(false);
@@ -113,6 +115,7 @@ namespace Antlr4.Codegen
                         }
                     }
                 }
+
                 if (g.tool.gen_visitor)
                 {
                     if (target.NeedsHeader())
@@ -123,6 +126,7 @@ namespace Antlr4.Codegen
                             gen.WriteVisitor(visitorHeader, true);
                         }
                     }
+
                     Template visitor = gen.GenerateVisitor(false);
                     if (g.tool.errMgr.GetNumErrors() == errorCount)
                     {
@@ -137,6 +141,7 @@ namespace Antlr4.Codegen
                             gen.WriteBaseVisitor(baseVisitor, true);
                         }
                     }
+
                     if (target.WantsBaseVisitor())
                     {
                         Template baseVisitor = gen.GenerateBaseVisitor(false);
@@ -153,24 +158,6 @@ namespace Antlr4.Codegen
 
         protected virtual void WriteRecognizer(Template template, CodeGenerator gen, bool header)
         {
-#if false
-            if (g.tool.launch_ST_inspector)
-            {
-                STViz viz = template.inspect();
-                if (g.tool.ST_inspector_wait_for_close)
-                {
-                    try
-                    {
-                        viz.waitForClose();
-                    }
-                    catch (InterruptedException ex)
-                    {
-                        g.tool.errMgr.toolError(ErrorType.INTERNAL_ERROR, ex);
-                    }
-                }
-            }
-#endif
-
             gen.WriteRecognizer(template, header);
         }
     }

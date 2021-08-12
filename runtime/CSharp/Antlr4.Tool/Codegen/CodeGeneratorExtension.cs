@@ -1,13 +1,15 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Codegen.Model;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Tool.Ast;
-
-    /** Filter list of SrcOps and return; default is pass-through filter */
+    /**
+     * Filter list of SrcOps and return; default is pass-through filter
+     */
     public class CodeGeneratorExtension
     {
         public OutputModelFactory factory;

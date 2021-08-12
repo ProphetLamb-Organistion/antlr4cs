@@ -1,93 +1,74 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using System.Globalization;
-using Antlr4.Runtime.Atn;
+using System;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Atn;
 
 namespace Antlr4.Runtime
 {
     /// <summary>A semantic predicate failed during validation.</summary>
     /// <remarks>
-    /// A semantic predicate failed during validation.  Validation of predicates
-    /// occurs when normally parsing the alternative just like matching a token.
-    /// Disambiguating predicate evaluation occurs when we test a predicate during
-    /// prediction.
+    ///     A semantic predicate failed during validation.  Validation of predicates
+    ///     occurs when normally parsing the alternative just like matching a token.
+    ///     Disambiguating predicate evaluation occurs when we test a predicate during
+    ///     prediction.
     /// </remarks>
-    [System.Serializable]
+    [Serializable]
     public class FailedPredicateException : RecognitionException
     {
         private const long serialVersionUID = 5379330841495778709L;
-
-        private readonly int ruleIndex;
-
-        private readonly int predicateIndex;
-
-        private readonly string predicate;
 
         public FailedPredicateException([NotNull] Parser recognizer)
             : this(recognizer, null)
         {
         }
 
-        public FailedPredicateException([NotNull] Parser recognizer, [Nullable] string predicate)
+        public FailedPredicateException([NotNull] Parser recognizer, [AllowNull] string predicate)
             : this(recognizer, predicate, null)
         {
         }
 
-        public FailedPredicateException([NotNull] Parser recognizer, [Nullable] string predicate, [Nullable] string message)
-            : base(FormatMessage(predicate, message), recognizer, ((ITokenStream)recognizer.InputStream), recognizer._ctx)
+        public FailedPredicateException([NotNull] Parser recognizer, [AllowNull] string predicate, [AllowNull] string message)
+            : base(FormatMessage(predicate, message), recognizer, (ITokenStream) recognizer.InputStream, recognizer._ctx)
         {
             ATNState s = recognizer.Interpreter.atn.states[recognizer.State];
-            AbstractPredicateTransition trans = (AbstractPredicateTransition)s.Transition(0);
+            AbstractPredicateTransition trans = (AbstractPredicateTransition) s.Transition(0);
             if (trans is PredicateTransition)
             {
-                this.ruleIndex = ((PredicateTransition)trans).ruleIndex;
-                this.predicateIndex = ((PredicateTransition)trans).predIndex;
+                RuleIndex = ((PredicateTransition) trans).ruleIndex;
+                PredIndex = ((PredicateTransition) trans).predIndex;
             }
             else
             {
-                this.ruleIndex = 0;
-                this.predicateIndex = 0;
+                RuleIndex = 0;
+                PredIndex = 0;
             }
-            this.predicate = predicate;
-            this.OffendingToken = recognizer.CurrentToken;
+
+            this.Predicate = predicate;
+            OffendingToken = recognizer.CurrentToken;
         }
 
-        public virtual int RuleIndex
-        {
-            get
-            {
-                return ruleIndex;
-            }
-        }
+        public virtual int RuleIndex { get; }
 
-        public virtual int PredIndex
-        {
-            get
-            {
-                return predicateIndex;
-            }
-        }
+        public virtual int PredIndex { get; }
 
-        [Nullable]
-        public virtual string Predicate
-        {
-            get
-            {
-                return predicate;
-            }
-        }
+        [MaybeNull] public virtual string Predicate { get; }
 
         [return: NotNull]
-        private static string FormatMessage([Nullable] string predicate, [Nullable] string message)
+        private static string FormatMessage([AllowNull] string predicate, [AllowNull] string message)
         {
             if (message != null)
             {
                 return message;
             }
-            return string.Format(CultureInfo.CurrentCulture, "failed predicate: {{{0}}}?", predicate);
+
+            return $"failed predicate: {{{predicate}}}?";
         }
     }
 }

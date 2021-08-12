@@ -1,23 +1,25 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+
 namespace Antlr4.Automata
 {
-    using System.Collections.Generic;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-    using Interval = Antlr4.Runtime.Misc.Interval;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-    using NotImplementedException = System.NotImplementedException;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-
     /**
-     *
      * @author Sam Harwell
      */
     public static class ATNOptimizer
     {
-
         public static void Optimize([NotNull] Grammar g, [NotNull] ATN atn)
         {
             OptimizeSets(g, atn);
@@ -39,15 +41,17 @@ namespace Antlr4.Automata
                 if (decision.ruleIndex >= 0)
                 {
                     Rule rule = g.GetRule(decision.ruleIndex);
-                    if (char.IsLower(rule.name[0]))
+                    if (Char.IsLower(rule.name[0]))
                     {
                         // parser codegen doesn't currently support SetTransition
                         continue;
                     }
                 }
 
-                IntervalSet setTransitions = new IntervalSet();
-                for (int i = 0; i < decision.NumberOfTransitions; i++)
+                IntervalSet setTransitions = new();
+                for (int i = 0;
+                    i < decision.NumberOfTransitions;
+                    i++)
                 {
                     Transition epsTransition = decision.Transition(i);
                     if (!(epsTransition is EpsilonTransition))
@@ -81,7 +85,9 @@ namespace Antlr4.Automata
                 }
 
                 // due to min alt resolution policies, can only collapse sequential alts
-                for (int i = setTransitions.GetIntervals().Count - 1; i >= 0; i--)
+                for (int i = setTransitions.GetIntervals().Count - 1;
+                    i >= 0;
+                    i--)
                 {
                     Interval interval = setTransitions.GetIntervals()[i];
                     if (interval.Length <= 1)
@@ -90,8 +96,10 @@ namespace Antlr4.Automata
                     }
 
                     ATNState blockEndState = decision.Transition(interval.a).target.Transition(0).target;
-                    IntervalSet matchSet = new IntervalSet();
-                    for (int j = interval.a; j <= interval.b; j++)
+                    IntervalSet matchSet = new();
+                    for (int j = interval.a;
+                        j <= interval.b;
+                        j++)
                     {
                         Transition matchTransition = decision.Transition(j).target.Transition(0);
                         if (matchTransition is NotSetTransition)
@@ -102,15 +110,17 @@ namespace Antlr4.Automata
                         IntervalSet set = matchTransition.Label;
                         int minElem = set.MinElement;
                         int maxElem = set.MaxElement;
-                        for (int k = minElem; k <= maxElem; k++)
+                        for (int k = minElem;
+                            k <= maxElem;
+                            k++)
                         {
                             if (matchSet.Contains(k))
                             {
-                                char setMin = (char)set.MinElement;
-                                char setMax = (char)set.MaxElement;
+                                char setMin = (char) set.MinElement;
+                                char setMax = (char) set.MaxElement;
                                 // TODO: Token is missing (i.e. position in source will not be displayed).
                                 g.tool.errMgr.GrammarError(ErrorType.CHARACTERS_COLLISION_IN_SET, g.fileName,
-                                                           null, (char)minElem + "-" + (char)maxElem, "[" + setMin + "-" + setMax + "]");
+                                    null, (char) minElem + "-" + (char) maxElem, "[" + setMin + "-" + setMax + "]");
                                 break;
                             }
                         }
@@ -137,7 +147,9 @@ namespace Antlr4.Automata
                     }
 
                     decision.Transition(interval.a).target.SetTransition(0, newTransition);
-                    for (int j = interval.a + 1; j <= interval.b; j++)
+                    for (int j = interval.a + 1;
+                        j <= interval.b;
+                        j++)
                     {
                         Transition removed = decision.Transition(interval.a + 1);
                         decision.RemoveTransition(interval.a + 1);
@@ -155,7 +167,9 @@ namespace Antlr4.Automata
             IList<ATNState> states = atn.states;
 
             int current = 0;
-            for (int i = 0; i < states.Count; i++)
+            for (int i = 0;
+                i < states.Count;
+                i++)
             {
                 ATNState state = states[i];
                 if (state == null)
@@ -175,7 +189,9 @@ namespace Antlr4.Automata
 
             //System.Console.WriteLine("ATN optimizer removed " + (states.Count - current) + " null states.");
             while (states.Count > current)
+            {
                 states.RemoveAt(states.Count - 1);
+            }
         }
     }
 }

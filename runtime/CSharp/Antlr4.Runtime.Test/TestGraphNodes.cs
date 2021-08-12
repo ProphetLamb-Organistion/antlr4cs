@@ -1,19 +1,23 @@
 ﻿// Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Text;
+using Antlr4.Runtime.Atn;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 namespace Antlr4.Runtime.Test
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Runtime.CompilerServices;
-    using System.Text;
-    using Antlr4.Runtime.Atn;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
-
     [TestClass]
     public class TestGraphNodes
     {
         private PredictionContextCache _contextCache;
+
+        public bool RootIsWildcard => true;
+
+        public bool FullContext => false;
 
         [TestInitialize]
         public void SetUp()
@@ -21,29 +25,13 @@ namespace Antlr4.Runtime.Test
             _contextCache = new PredictionContextCache();
         }
 
-        public bool RootIsWildcard
-        {
-            get
-            {
-                return true;
-            }
-        }
-
-        public bool FullContext
-        {
-            get
-            {
-                return false;
-            }
-        }
-
         [TestMethod]
         public void Test_dollar_dollar()
         {
             PredictionContext r = _contextCache.Join(PredictionContext.EmptyLocal,
-                                                          PredictionContext.EmptyLocal);
+                PredictionContext.EmptyLocal);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"*\"];" + Environment.NewLine +
@@ -55,9 +43,9 @@ namespace Antlr4.Runtime.Test
         public void Test_dollar_dollar_fullctx()
         {
             PredictionContext r = _contextCache.Join(PredictionContext.EmptyFull,
-                                                          PredictionContext.EmptyFull);
+                PredictionContext.EmptyFull);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"$\"];" + Environment.NewLine +
@@ -70,7 +58,7 @@ namespace Antlr4.Runtime.Test
         {
             PredictionContext r = _contextCache.Join(X(false), PredictionContext.EmptyLocal);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"*\"];" + Environment.NewLine +
@@ -83,7 +71,7 @@ namespace Antlr4.Runtime.Test
         {
             PredictionContext r = _contextCache.Join(X(true), PredictionContext.EmptyFull);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>$\"];" + Environment.NewLine +
@@ -98,7 +86,7 @@ namespace Antlr4.Runtime.Test
         {
             PredictionContext r = _contextCache.Join(PredictionContext.EmptyLocal, X(false));
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"*\"];" + Environment.NewLine +
@@ -111,7 +99,7 @@ namespace Antlr4.Runtime.Test
         {
             PredictionContext r = _contextCache.Join(PredictionContext.EmptyFull, X(true));
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>$\"];" + Environment.NewLine +
@@ -126,7 +114,7 @@ namespace Antlr4.Runtime.Test
         {
             PredictionContext r = _contextCache.Join(A(false), A(false));
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -144,7 +132,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = CreateSingleton(x, 1);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -162,7 +150,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = CreateSingleton(x, 1);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -182,7 +170,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = A(false);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -200,9 +188,9 @@ namespace Antlr4.Runtime.Test
             PredictionContext right = _contextCache.Join(empty, child1);
             PredictionContext left = CreateSingleton(right, 8);
             PredictionContext merged = _contextCache.Join(left, right);
-            String actual = ToDotString(merged);
+            string actual = ToDotString(merged);
             Console.WriteLine(actual);
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>$\"];" + Environment.NewLine +
@@ -222,7 +210,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = A(true);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -239,7 +227,7 @@ namespace Antlr4.Runtime.Test
         {
             PredictionContext r = _contextCache.Join(A(false), B(false));
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -258,7 +246,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = CreateSingleton(x, 1);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -279,7 +267,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = CreateSingleton(x2, 1);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -302,7 +290,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = CreateSingleton(b2, 1);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -327,7 +315,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext a2 = CreateSingleton(c, 1);
             PredictionContext r = _contextCache.Join(a1, a2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -350,7 +338,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext b = CreateSingleton(x, 2);
             PredictionContext r = _contextCache.Join(a, b);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -372,7 +360,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext b = CreateSingleton(x2, 2);
             PredictionContext r = _contextCache.Join(a, b);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -392,7 +380,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext b = CreateSingleton(Y(false), 2);
             PredictionContext r = _contextCache.Join(a, b);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -415,7 +403,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext b = CreateSingleton(x2, 2);
             PredictionContext r = _contextCache.Join(a, b);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -436,7 +424,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext b = CreateSingleton(x2, 2);
             PredictionContext r = _contextCache.Join(a, b);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -460,7 +448,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext b = CreateSingleton(f, 2);
             PredictionContext r = _contextCache.Join(a, b);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -486,7 +474,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(PredictionContext.EmptyFull);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"$\"];" + Environment.NewLine +
@@ -496,7 +484,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aab_Ac()
-        { // a,b + c
+        {
+            // a,b + c
             PredictionContext a = A(false);
             PredictionContext b = B(false);
             PredictionContext c = C(false);
@@ -504,7 +493,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(c);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -525,7 +514,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(a2);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -537,7 +526,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aa_Abc()
-        { // a + b,c
+        {
+            // a + b,c
             PredictionContext a = A(false);
             PredictionContext b = B(false);
             PredictionContext c = C(false);
@@ -545,7 +535,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(b, c);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -559,7 +549,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aac_Ab()
-        { // a,c + b
+        {
+            // a,c + b
             PredictionContext a = A(false);
             PredictionContext b = B(false);
             PredictionContext c = C(false);
@@ -567,7 +558,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(b);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -581,12 +572,13 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aab_Aa()
-        { // a,b + a
+        {
+            // a,b + a
             PredictionContext A1 = Array(A(false), B(false));
             PredictionContext A2 = Array(A(false));
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -599,12 +591,13 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aab_Ab()
-        { // a,b + b
+        {
+            // a,b + b
             PredictionContext A1 = Array(A(false), B(false));
             PredictionContext A2 = Array(B(false));
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -617,14 +610,15 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aax_Aby()
-        { // ax + by but in arrays
+        {
+            // ax + by but in arrays
             PredictionContext a = CreateSingleton(X(false), 1);
             PredictionContext b = CreateSingleton(Y(false), 2);
             PredictionContext A1 = Array(a);
             PredictionContext A2 = Array(b);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>\"];" + Environment.NewLine +
@@ -641,14 +635,15 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aax_Aay()
-        { // ax + ay -> merged singleton a, array parent
+        {
+            // ax + ay -> merged singleton a, array parent
             PredictionContext a1 = CreateSingleton(X(false), 1);
             PredictionContext a2 = CreateSingleton(Y(false), 1);
             PredictionContext A1 = Array(a1);
             PredictionContext A2 = Array(a2);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[label=\"0\"];" + Environment.NewLine +
@@ -663,14 +658,15 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aaxc_Aayd()
-        { // ax,c + ay,d -> merged a, array parent
+        {
+            // ax,c + ay,d -> merged a, array parent
             PredictionContext a1 = CreateSingleton(X(false), 1);
             PredictionContext a2 = CreateSingleton(Y(false), 1);
             PredictionContext A1 = Array(a1, C(false));
             PredictionContext A2 = Array(a2, D(false));
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -687,7 +683,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aaubv_Acwdx()
-        { // au,bv + cw,dx -> [a,b,c,d]->[u,v,w,x]
+        {
+            // au,bv + cw,dx -> [a,b,c,d]->[u,v,w,x]
             PredictionContext a = CreateSingleton(U(false), 1);
             PredictionContext b = CreateSingleton(V(false), 2);
             PredictionContext c = CreateSingleton(W(false), 3);
@@ -696,7 +693,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(c, d);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>|<p3>\"];" + Environment.NewLine +
@@ -719,7 +716,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aaubv_Abvdx()
-        { // au,bv + bv,dx -> [a,b,d]->[u,v,x]
+        {
+            // au,bv + bv,dx -> [a,b,d]->[u,v,x]
             PredictionContext a = CreateSingleton(U(false), 1);
             PredictionContext b1 = CreateSingleton(V(false), 2);
             PredictionContext b2 = CreateSingleton(V(false), 2);
@@ -728,7 +726,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(b2, d);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -748,7 +746,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aaubv_Abwdx()
-        { // au,bv + bw,dx -> [a,b,d]->[u,[v,w],x]
+        {
+            // au,bv + bw,dx -> [a,b,d]->[u,[v,w],x]
             PredictionContext a = CreateSingleton(U(false), 1);
             PredictionContext b1 = CreateSingleton(V(false), 2);
             PredictionContext b2 = CreateSingleton(W(false), 2);
@@ -757,7 +756,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(b2, d);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -778,7 +777,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aaubv_Abvdu()
-        { // au,bv + bv,du -> [a,b,d]->[u,v,u]; u,v shared
+        {
+            // au,bv + bv,du -> [a,b,d]->[u,v,u]; u,v shared
             PredictionContext a = CreateSingleton(U(false), 1);
             PredictionContext b1 = CreateSingleton(V(false), 2);
             PredictionContext b2 = CreateSingleton(V(false), 2);
@@ -787,7 +787,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(b2, d);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>\"];" + Environment.NewLine +
@@ -805,7 +805,8 @@ namespace Antlr4.Runtime.Test
 
         [TestMethod]
         public void Test_Aaubu_Acudu()
-        { // au,bu + cu,du -> [a,b,c,d]->[u,u,u,u]
+        {
+            // au,bu + cu,du -> [a,b,c,d]->[u,u,u,u]
             PredictionContext a = CreateSingleton(U(false), 1);
             PredictionContext b = CreateSingleton(U(false), 2);
             PredictionContext c = CreateSingleton(U(false), 3);
@@ -814,7 +815,7 @@ namespace Antlr4.Runtime.Test
             PredictionContext A2 = Array(c, d);
             PredictionContext r = _contextCache.Join(A1, A2);
             Console.WriteLine(ToDotString(r));
-            String expecting =
+            string expecting =
                 "digraph G {" + Environment.NewLine +
                 "rankdir=LR;" + Environment.NewLine +
                 "  s0[shape=record, label=\"<p0>|<p1>|<p2>|<p3>\"];" + Environment.NewLine +
@@ -886,7 +887,9 @@ namespace Antlr4.Runtime.Test
         public PredictionContext Array(params PredictionContext[] nodes)
         {
             PredictionContext result = nodes[0];
-            for (int i = 1; i < nodes.Length; i++)
+            for (int i = 1;
+                i < nodes.Length;
+                i++)
             {
                 result = _contextCache.Join(result, nodes[i]);
             }
@@ -894,13 +897,13 @@ namespace Antlr4.Runtime.Test
             return result;
         }
 
-        private static String ToDotString(PredictionContext context)
+        private static string ToDotString(PredictionContext context)
         {
-            StringBuilder nodes = new StringBuilder();
-            StringBuilder edges = new StringBuilder();
+            StringBuilder nodes = new();
+            StringBuilder edges = new();
             IDictionary<PredictionContext, PredictionContext> visited = new IdentityHashMap<PredictionContext, PredictionContext>();
             IDictionary<PredictionContext, int> contextIds = new IdentityHashMap<PredictionContext, int>();
-            Stack<PredictionContext> workList = new Stack<PredictionContext>();
+            var workList = new Stack<PredictionContext>();
             visited[context] = context;
             contextIds[context] = contextIds.Count;
             workList.Push(context);
@@ -922,7 +925,9 @@ namespace Antlr4.Runtime.Test
                 }
                 else if (current.Size > 1)
                 {
-                    for (int i = 0; i < current.Size; i++)
+                    for (int i = 0;
+                        i < current.Size;
+                        i++)
                     {
                         if (i > 0)
                         {
@@ -947,7 +952,9 @@ namespace Antlr4.Runtime.Test
 
                 nodes.AppendLine("\"];");
 
-                for (int i = 0; i < current.Size; i++)
+                for (int i = 0;
+                    i < current.Size;
+                    i++)
                 {
                     if (current.GetReturnState(i) == PredictionContext.EmptyFullStateKey
                         || current.GetReturnState(i) == PredictionContext.EmptyLocalStateKey)
@@ -975,7 +982,7 @@ namespace Antlr4.Runtime.Test
                 }
             }
 
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new();
             builder.AppendLine("digraph G {");
             builder.AppendLine("rankdir=LR;");
             builder.Append(nodes);
@@ -996,15 +1003,7 @@ namespace Antlr4.Runtime.Test
         private class IdentityEqualityComparer<T> : IEqualityComparer<T>
             where T : class
         {
-            private static readonly IdentityEqualityComparer<T> _default = new IdentityEqualityComparer<T>();
-
-            public static IdentityEqualityComparer<T> Default
-            {
-                get
-                {
-                    return _default;
-                }
-            }
+            public static IdentityEqualityComparer<T> Default { get; } = new();
 
             public bool Equals(T x, T y)
             {

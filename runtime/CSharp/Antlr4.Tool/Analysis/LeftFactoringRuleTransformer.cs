@@ -1,24 +1,26 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Parse;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Tree;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Analysis
 {
-    using System.Collections.Generic;
-    using Antlr4.Parse;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using ArgumentException = System.ArgumentException;
-    using NotImplementedException = System.NotImplementedException;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-    using System.Diagnostics;
-    using InvalidOperationException = System.InvalidOperationException;
-    using TokenConstants = Antlr4.Runtime.TokenConstants;
-    using ITree = Antlr.Runtime.Tree.ITree;
-
     /**
-     *
      * @author Sam Harwell
      */
     public class LeftFactoringRuleTransformer
@@ -26,23 +28,19 @@ namespace Antlr4.Analysis
         public static readonly string LEFTFACTOR = "leftfactor";
         public static readonly string SUPPRESS_ACCESSOR = "suppressAccessor";
 
-#if false
-        private static readonly Logger LOGGER = Logger.getLogger(typeof(LeftFactoringRuleTransformer).Name);
-#endif
-
         public GrammarRootAST _ast;
         public IDictionary<string, Rule> _rules;
         public Grammar _g;
         public AntlrTool _tool;
 
-        private readonly GrammarASTAdaptor adaptor = new GrammarASTAdaptor();
+        private readonly GrammarASTAdaptor adaptor = new();
 
         public LeftFactoringRuleTransformer([NotNull] GrammarRootAST ast, [NotNull] IDictionary<string, Rule> rules, [NotNull] Grammar g)
         {
-            this._ast = ast;
-            this._rules = rules;
-            this._g = g;
-            this._tool = g.tool;
+            _ast = ast;
+            _rules = rules;
+            _g = g;
+            _tool = g.tool;
         }
 
         public virtual void TranslateLeftFactoredRules()
@@ -64,23 +62,25 @@ namespace Antlr4.Analysis
                 string leftFactoredRuleAction = leftFactoredRules.ToString();
                 leftFactoredRuleAction = leftFactoredRuleAction.Substring(1, leftFactoredRuleAction.Length - 2);
                 string[] rules = leftFactoredRuleAction.Split(',');
-                for (int i = 0; i < rules.Length; i++)
+                for (int i = 0;
+                    i < rules.Length;
+                    i++)
+                {
                     rules[i] = rules[i].Trim();
+                }
 
                 if (rules.Length == 0)
                 {
                     continue;
                 }
 
-#if false
-                LOGGER.log(Level.FINE, "Left factoring {0} out of alts in grammar rule {1}", new object[] { Arrays.toString(rules), r.name });
-#endif
-
                 ISet<GrammarAST> translatedBlocks = new HashSet<GrammarAST>();
                 IList<GrammarAST> blocks = r.ast.GetNodesWithType(ANTLRParser.BLOCK);
                 foreach (GrammarAST block in blocks)
                 {
-                    for (GrammarAST current = (GrammarAST)block.Parent; current != null; current = (GrammarAST)current.GetAncestor(ANTLRParser.BLOCK))
+                    for (GrammarAST current = (GrammarAST) block.Parent;
+                        current != null;
+                        current = (GrammarAST) current.GetAncestor(ANTLRParser.BLOCK))
                     {
                         if (translatedBlocks.Contains(current))
                         {
@@ -102,8 +102,7 @@ namespace Antlr4.Analysis
 
                     translatedBlocks.Add(block);
 
-                    continueBlockLoop:
-                    ;
+                    continueBlockLoop: ;
                 }
             }
         }
@@ -111,9 +110,11 @@ namespace Antlr4.Analysis
         protected virtual bool ExpandOptionalQuantifiersForBlock(GrammarAST block, bool variant)
         {
             IList<GrammarAST> children = new List<GrammarAST>();
-            for (int i = 0; i < block.ChildCount; i++)
+            for (int i = 0;
+                i < block.ChildCount;
+                i++)
             {
-                GrammarAST child = (GrammarAST)block.GetChild(i);
+                GrammarAST child = (GrammarAST) block.GetChild(i);
                 if (child.Type != ANTLRParser.ALT)
                 {
                     children.Add(child);
@@ -129,23 +130,25 @@ namespace Antlr4.Analysis
                 children.Add(expandedAlt);
             }
 
-            GrammarAST newChildren = (GrammarAST)adaptor.Nil();
+            GrammarAST newChildren = (GrammarAST) adaptor.Nil();
             newChildren.AddChildren(children);
             block.ReplaceChildren(0, block.ChildCount - 1, newChildren);
             block.FreshenParentAndChildIndexesDeeply();
 
             if (!variant && block.Parent is RuleAST)
             {
-                RuleAST ruleAST = (RuleAST)block.Parent;
+                RuleAST ruleAST = (RuleAST) block.Parent;
                 string ruleName = ruleAST.GetChild(0).Text;
                 Rule r = _rules[ruleName];
                 IList<GrammarAST> blockAlts = block.GetAllChildrenWithType(ANTLRParser.ALT);
                 r.numberOfAlts = blockAlts.Count;
                 r.alt = new Alternative[blockAlts.Count + 1];
-                for (int i = 0; i < blockAlts.Count; i++)
+                for (int i = 0;
+                    i < blockAlts.Count;
+                    i++)
                 {
                     r.alt[i + 1] = new Alternative(r, i + 1);
-                    r.alt[i + 1].ast = (AltAST)blockAlts[i];
+                    r.alt[i + 1].ast = (AltAST) blockAlts[i];
                 }
             }
 
@@ -161,7 +164,7 @@ namespace Antlr4.Analysis
 
             if (alt.GetChild(0).Type == ANTLRParser.OPTIONAL)
             {
-                GrammarAST root = (GrammarAST)adaptor.Nil();
+                GrammarAST root = (GrammarAST) adaptor.Nil();
 
                 GrammarAST alt2 = alt.DupTree();
                 alt2.DeleteChild(0);
@@ -173,8 +176,8 @@ namespace Antlr4.Analysis
                 alt.SetChild(0, alt.GetChild(0).GetChild(0));
                 if (alt.GetChild(0).Type == ANTLRParser.BLOCK && alt.GetChild(0).ChildCount == 1 && alt.GetChild(0).GetChild(0).Type == ANTLRParser.ALT)
                 {
-                    GrammarAST list = (GrammarAST)adaptor.Nil();
-                    foreach (object tree in ((GrammarAST)alt.GetChild(0).GetChild(0)).Children)
+                    GrammarAST list = (GrammarAST) adaptor.Nil();
+                    foreach (object tree in ((GrammarAST) alt.GetChild(0).GetChild(0)).Children)
                     {
                         adaptor.AddChild(list, tree);
                     }
@@ -186,9 +189,10 @@ namespace Antlr4.Analysis
                 adaptor.AddChild(root, alt2);
                 return root;
             }
-            else if (alt.GetChild(0).Type == ANTLRParser.CLOSURE)
+
+            if (alt.GetChild(0).Type == ANTLRParser.CLOSURE)
             {
-                GrammarAST root = (GrammarAST)adaptor.Nil();
+                GrammarAST root = (GrammarAST) adaptor.Nil();
 
                 GrammarAST alt2 = alt.DupTree();
                 alt2.DeleteChild(0);
@@ -197,8 +201,10 @@ namespace Antlr4.Analysis
                     adaptor.AddChild(alt2, adaptor.Create(ANTLRParser.EPSILON, "EPSILON"));
                 }
 
-                PlusBlockAST plusBlockAST = new PlusBlockAST(ANTLRParser.POSITIVE_CLOSURE, adaptor.CreateToken(ANTLRParser.POSITIVE_CLOSURE, "+"), null);
-                for (int i = 0; i < alt.GetChild(0).ChildCount; i++)
+                PlusBlockAST plusBlockAST = new(ANTLRParser.POSITIVE_CLOSURE, adaptor.CreateToken(ANTLRParser.POSITIVE_CLOSURE, "+"), null);
+                for (int i = 0;
+                    i < alt.GetChild(0).ChildCount;
+                    i++)
                 {
                     plusBlockAST.AddChild(alt.GetChild(0).GetChild(i));
                 }
@@ -219,7 +225,8 @@ namespace Antlr4.Analysis
             {
                 throw new ArgumentException("Cannot include the factored element in unfactored alternatives.");
             }
-            else if (mode == DecisionFactorMode.COMBINED_FACTOR && !includeFactoredElement)
+
+            if (mode == DecisionFactorMode.COMBINED_FACTOR && !includeFactoredElement)
             {
                 throw new ArgumentException("Cannot return a combined answer without the factored element.");
             }
@@ -230,11 +237,13 @@ namespace Antlr4.Analysis
             }
 
             IList<GrammarAST> alternatives = block.GetAllChildrenWithType(ANTLRParser.ALT);
-            GrammarAST[] factoredAlternatives = new GrammarAST[alternatives.Count];
-            GrammarAST[] unfactoredAlternatives = new GrammarAST[alternatives.Count];
-            IntervalSet factoredIntervals = new IntervalSet();
-            IntervalSet unfactoredIntervals = new IntervalSet();
-            for (int i = 0; i < alternatives.Count; i++)
+            var factoredAlternatives = new GrammarAST[alternatives.Count];
+            var unfactoredAlternatives = new GrammarAST[alternatives.Count];
+            IntervalSet factoredIntervals = new();
+            IntervalSet unfactoredIntervals = new();
+            for (int i = 0;
+                i < alternatives.Count;
+                i++)
             {
                 GrammarAST alternative = alternatives[i];
                 if (mode.IncludeUnfactoredAlts())
@@ -249,7 +258,8 @@ namespace Antlr4.Analysis
 
                 if (mode.IncludeFactoredAlts())
                 {
-                    GrammarAST factoredAlt = TranslateLeftFactoredAlternative(alternative, factoredRule, variant, mode == DecisionFactorMode.COMBINED_FACTOR ? DecisionFactorMode.PARTIAL_FACTORED : DecisionFactorMode.FULL_FACTOR, includeFactoredElement);
+                    GrammarAST factoredAlt = TranslateLeftFactoredAlternative(alternative, factoredRule, variant,
+                        mode == DecisionFactorMode.COMBINED_FACTOR ? DecisionFactorMode.PARTIAL_FACTORED : DecisionFactorMode.FULL_FACTOR, includeFactoredElement);
                     factoredAlternatives[i] = factoredAlt;
                     if (factoredAlt != null)
                     {
@@ -262,14 +272,17 @@ namespace Antlr4.Analysis
             {
                 return false;
             }
-            else if (unfactoredIntervals.IsNil && !mode.IncludeFactoredAlts())
+
+            if (unfactoredIntervals.IsNil && !mode.IncludeFactoredAlts())
             {
                 return false;
             }
 
             if (unfactoredIntervals.IsNil && factoredIntervals.Count == alternatives.Count && mode.IncludeFactoredAlts() && !includeFactoredElement)
             {
-                for (int i = 0; i < factoredAlternatives.Length; i++)
+                for (int i = 0;
+                    i < factoredAlternatives.Length;
+                    i++)
                 {
                     GrammarAST translatedAlt = factoredAlternatives[i];
                     if (translatedAlt.ChildCount == 0)
@@ -282,9 +295,12 @@ namespace Antlr4.Analysis
 
                 return true;
             }
-            else if (factoredIntervals.IsNil && unfactoredIntervals.Count == alternatives.Count && mode.IncludeUnfactoredAlts())
+
+            if (factoredIntervals.IsNil && unfactoredIntervals.Count == alternatives.Count && mode.IncludeUnfactoredAlts())
             {
-                for (int i = 0; i < unfactoredAlternatives.Length; i++)
+                for (int i = 0;
+                    i < unfactoredAlternatives.Length;
+                    i++)
                 {
                     GrammarAST translatedAlt = unfactoredAlternatives[i];
                     if (translatedAlt.ChildCount == 0)
@@ -315,8 +331,10 @@ namespace Antlr4.Analysis
              *
              * factoredElement (a | b | c | ...)
              */
-            GrammarAST newChildren = (GrammarAST)adaptor.Nil();
-            for (int i = 0; i < alternatives.Count; i++)
+            GrammarAST newChildren = (GrammarAST) adaptor.Nil();
+            for (int i = 0;
+                i < alternatives.Count;
+                i++)
             {
                 if (mode.IncludeFactoredAlts() && factoredIntervals.Contains(i))
                 {
@@ -329,15 +347,7 @@ namespace Antlr4.Analysis
                             adaptor.AddChild(translatedAlt, adaptor.Create(ANTLRParser.EPSILON, "EPSILON"));
                         }
 
-                        GrammarAST previous = (GrammarAST)newChildren.GetChild(newChildren.ChildCount - 1);
-
-#if false
-                        if (LOGGER.isLoggable(Level.FINE))
-                        {
-                            LOGGER.log(Level.FINE, previous.ToStringTree());
-                            LOGGER.log(Level.FINE, translatedAlt.ToStringTree());
-                        }
-#endif
+                        GrammarAST previous = (GrammarAST) newChildren.GetChild(newChildren.ChildCount - 1);
 
                         if (previous.ChildCount == 1 || previous.GetChild(1).Type != ANTLRParser.BLOCK)
                         {
@@ -375,15 +385,8 @@ namespace Antlr4.Analysis
                             adaptor.AddChild(translatedAlt, newBlock);
                         }
 
-                        GrammarAST combinedBlock = (GrammarAST)previous.GetChild(1);
+                        GrammarAST combinedBlock = (GrammarAST) previous.GetChild(1);
                         adaptor.AddChild(combinedBlock, translatedAlt.GetChild(1).GetChild(0));
-
-#if false
-                        if (LOGGER.isLoggable(Level.FINE))
-                        {
-                            LOGGER.log(Level.FINE, previous.ToStringTree());
-                        }
-#endif
                     }
                     else
                     {
@@ -413,29 +416,33 @@ namespace Antlr4.Analysis
 
             if (!variant && block.Parent is RuleAST)
             {
-                RuleAST ruleAST = (RuleAST)block.Parent;
+                RuleAST ruleAST = (RuleAST) block.Parent;
                 string ruleName = ruleAST.GetChild(0).Text;
                 Rule r = _rules[ruleName];
                 IList<GrammarAST> blockAlts = block.GetAllChildrenWithType(ANTLRParser.ALT);
                 r.numberOfAlts = blockAlts.Count;
                 r.alt = new Alternative[blockAlts.Count + 1];
-                for (int i = 0; i < blockAlts.Count; i++)
+                for (int i = 0;
+                    i < blockAlts.Count;
+                    i++)
                 {
                     r.alt[i + 1] = new Alternative(r, i + 1);
-                    r.alt[i + 1].ast = (AltAST)blockAlts[i];
+                    r.alt[i + 1].ast = (AltAST) blockAlts[i];
                 }
             }
 
             return true;
         }
 
-        protected virtual GrammarAST TranslateLeftFactoredAlternative(GrammarAST alternative, string factoredRule, bool variant, DecisionFactorMode mode, bool includeFactoredElement)
+        protected virtual GrammarAST TranslateLeftFactoredAlternative(GrammarAST alternative, string factoredRule, bool variant, DecisionFactorMode mode,
+            bool includeFactoredElement)
         {
             if (mode == DecisionFactorMode.PARTIAL_UNFACTORED && includeFactoredElement)
             {
                 throw new ArgumentException("Cannot include the factored element in unfactored alternatives.");
             }
-            else if (mode == DecisionFactorMode.COMBINED_FACTOR && !includeFactoredElement)
+
+            if (mode == DecisionFactorMode.COMBINED_FACTOR && !includeFactoredElement)
             {
                 throw new ArgumentException("Cannot return a combined answer without the factored element.");
             }
@@ -452,7 +459,7 @@ namespace Antlr4.Analysis
                 return null;
             }
 
-            GrammarAST translatedElement = TranslateLeftFactoredElement((GrammarAST)alternative.GetChild(0), factoredRule, variant, mode, includeFactoredElement);
+            GrammarAST translatedElement = TranslateLeftFactoredElement((GrammarAST) alternative.GetChild(0), factoredRule, variant, mode, includeFactoredElement);
             if (translatedElement == null)
             {
                 return null;
@@ -484,8 +491,8 @@ namespace Antlr4.Analysis
 
             switch (element.Type)
             {
-            case ANTLRParser.ASSIGN:
-            case ANTLRParser.PLUS_ASSIGN:
+                case ANTLRParser.ASSIGN:
+                case ANTLRParser.PLUS_ASSIGN:
                 {
                     /* label=a
                      *
@@ -494,18 +501,13 @@ namespace Antlr4.Analysis
                      * factoredElement label=a_factored
                      */
 
-                    GrammarAST translatedChildElement = TranslateLeftFactoredElement((GrammarAST)element.GetChild(1), factoredRule, variant, mode, includeFactoredElement);
+                    GrammarAST translatedChildElement = TranslateLeftFactoredElement((GrammarAST) element.GetChild(1), factoredRule, variant, mode, includeFactoredElement);
                     if (translatedChildElement == null)
                     {
                         return null;
                     }
 
-                    RuleAST ruleAST = (RuleAST)element.GetAncestor(ANTLRParser.RULE);
-
-#if false
-                    LOGGER.log(Level.WARNING, "Could not left factor ''{0}'' out of decision in rule ''{1}'': labeled rule references are not yet supported.",
-                        new object[] { factoredRule, ruleAST.GetChild(0).Text });
-#endif
+                    RuleAST ruleAST = (RuleAST) element.GetAncestor(ANTLRParser.RULE);
 
                     return null;
                     //if (!translatedChildElement.IsNil)
@@ -536,7 +538,7 @@ namespace Antlr4.Analysis
                     //}
                 }
 
-            case ANTLRParser.RULE_REF:
+                case ANTLRParser.RULE_REF:
                 {
                     if (factoredRule.Equals(element.Token.Text))
                     {
@@ -551,8 +553,8 @@ namespace Antlr4.Analysis
                             return element;
                         }
 
-                        GrammarAST root1 = (GrammarAST)adaptor.Nil();
-                        root1.AddChild((ITree)adaptor.Create(TokenConstants.Epsilon, "EPSILON"));
+                        GrammarAST root1 = (GrammarAST) adaptor.Nil();
+                        root1.AddChild((ITree) adaptor.Create(TokenConstants.Epsilon, "EPSILON"));
                         root1.DeleteChild(0);
                         return root1;
                     }
@@ -566,44 +568,44 @@ namespace Antlr4.Analysis
                     RuleVariants ruleVariants = CreateLeftFactoredRuleVariant(targetRule, factoredRule);
                     switch (ruleVariants)
                     {
-                    case RuleVariants.NONE:
-                        if (!mode.IncludeUnfactoredAlts())
-                        {
-                            return null;
-                        }
+                        case RuleVariants.NONE:
+                            if (!mode.IncludeUnfactoredAlts())
+                            {
+                                return null;
+                            }
 
-                        // just call the original rule (leave the element unchanged)
-                        return element;
+                            // just call the original rule (leave the element unchanged)
+                            return element;
 
-                    case RuleVariants.FULLY_FACTORED:
-                        if (!mode.IncludeFactoredAlts())
-                        {
-                            return null;
-                        }
+                        case RuleVariants.FULLY_FACTORED:
+                            if (!mode.IncludeFactoredAlts())
+                            {
+                                return null;
+                            }
 
-                        break;
+                            break;
 
-                    case RuleVariants.PARTIALLY_FACTORED:
-                        break;
+                        case RuleVariants.PARTIALLY_FACTORED:
+                            break;
 
-                    default:
-                        throw new InvalidOperationException();
+                        default:
+                            throw new InvalidOperationException();
                     }
 
                     string marker = mode.IncludeFactoredAlts() ? ATNSimulator.RuleLfVariantMarker : ATNSimulator.RuleNolfVariantMarker;
                     element.SetText(element.Text + marker + factoredRule);
 
-                    GrammarAST root = (GrammarAST)adaptor.Nil();
+                    GrammarAST root = (GrammarAST) adaptor.Nil();
 
                     if (includeFactoredElement)
                     {
                         Debug.Assert(mode.IncludeFactoredAlts());
-                        RuleRefAST factoredRuleRef = new RuleRefAST(adaptor.CreateToken(ANTLRParser.RULE_REF, factoredRule));
-                        factoredRuleRef.SetOption(SUPPRESS_ACCESSOR, (GrammarAST)adaptor.Create(ANTLRParser.ID, "true"));
+                        RuleRefAST factoredRuleRef = new(adaptor.CreateToken(ANTLRParser.RULE_REF, factoredRule));
+                        factoredRuleRef.SetOption(SUPPRESS_ACCESSOR, (GrammarAST) adaptor.Create(ANTLRParser.ID, "true"));
                         Rule factoredRuleDef = _rules[factoredRule];
                         if (factoredRuleDef is LeftRecursiveRule)
                         {
-                            factoredRuleRef.SetOption(LeftRecursiveRuleTransformer.PRECEDENCE_OPTION_NAME, (GrammarAST)adaptor.Create(ANTLRParser.INT, "0"));
+                            factoredRuleRef.SetOption(LeftRecursiveRuleTransformer.PRECEDENCE_OPTION_NAME, (GrammarAST) adaptor.Create(ANTLRParser.INT, "0"));
                         }
 
                         if (factoredRuleDef.args != null && factoredRuleDef.args.Size() > 0)
@@ -619,7 +621,7 @@ namespace Antlr4.Analysis
                     return root;
                 }
 
-            case ANTLRParser.BLOCK:
+                case ANTLRParser.BLOCK:
                 {
                     GrammarAST cloned = element.DupTree();
                     if (!TranslateLeftFactoredDecision(cloned, factoredRule, variant, mode, includeFactoredElement))
@@ -632,8 +634,10 @@ namespace Antlr4.Analysis
                         return null;
                     }
 
-                    GrammarAST root = (GrammarAST)adaptor.Nil();
-                    for (int i = 0; i < cloned.GetChild(0).ChildCount; i++)
+                    GrammarAST root = (GrammarAST) adaptor.Nil();
+                    for (int i = 0;
+                        i < cloned.GetChild(0).ChildCount;
+                        i++)
                     {
                         adaptor.AddChild(root, cloned.GetChild(0).GetChild(i));
                     }
@@ -641,7 +645,7 @@ namespace Antlr4.Analysis
                     return root;
                 }
 
-            case ANTLRParser.POSITIVE_CLOSURE:
+                case ANTLRParser.POSITIVE_CLOSURE:
                 {
                     /* a+
                      *
@@ -650,7 +654,7 @@ namespace Antlr4.Analysis
                      * factoredElement a_factored a*
                      */
 
-                    GrammarAST originalChildElement = (GrammarAST)element.GetChild(0);
+                    GrammarAST originalChildElement = (GrammarAST) element.GetChild(0);
                     GrammarAST translatedElement = TranslateLeftFactoredElement(originalChildElement.DupTree(), factoredRule, variant, mode, includeFactoredElement);
                     if (translatedElement == null)
                     {
@@ -660,7 +664,7 @@ namespace Antlr4.Analysis
                     GrammarAST closure = new StarBlockAST(ANTLRParser.CLOSURE, adaptor.CreateToken(ANTLRParser.CLOSURE, "CLOSURE"), null);
                     adaptor.AddChild(closure, originalChildElement);
 
-                    GrammarAST root = (GrammarAST)adaptor.Nil();
+                    GrammarAST root = (GrammarAST) adaptor.Nil();
                     if (mode.IncludeFactoredAlts())
                     {
                         if (includeFactoredElement)
@@ -669,70 +673,71 @@ namespace Antlr4.Analysis
                             adaptor.AddChild(root, factoredElement);
                         }
                     }
+
                     adaptor.AddChild(root, translatedElement);
                     adaptor.AddChild(root, closure);
                     return root;
                 }
 
-            case ANTLRParser.CLOSURE:
-            case ANTLRParser.OPTIONAL:
-                // not yet supported
-                if (mode.IncludeUnfactoredAlts())
-                {
-                    return element;
-                }
+                case ANTLRParser.CLOSURE:
+                case ANTLRParser.OPTIONAL:
+                    // not yet supported
+                    if (mode.IncludeUnfactoredAlts())
+                    {
+                        return element;
+                    }
 
-                return null;
+                    return null;
 
-            case ANTLRParser.DOT:
-                // ref to imported grammar, not yet supported
-                if (mode.IncludeUnfactoredAlts())
-                {
-                    return element;
-                }
+                case ANTLRParser.DOT:
+                    // ref to imported grammar, not yet supported
+                    if (mode.IncludeUnfactoredAlts())
+                    {
+                        return element;
+                    }
 
-                return null;
+                    return null;
 
-            case ANTLRParser.ACTION:
-            case ANTLRParser.SEMPRED:
-                if (mode.IncludeUnfactoredAlts())
-                {
-                    return element;
-                }
+                case ANTLRParser.ACTION:
+                case ANTLRParser.SEMPRED:
+                    if (mode.IncludeUnfactoredAlts())
+                    {
+                        return element;
+                    }
 
-                return null;
+                    return null;
 
-            case ANTLRParser.WILDCARD:
-            case ANTLRParser.STRING_LITERAL:
-            case ANTLRParser.TOKEN_REF:
-            case ANTLRParser.NOT:
-                // terminals
-                if (mode.IncludeUnfactoredAlts())
-                {
-                    return element;
-                }
+                case ANTLRParser.WILDCARD:
+                case ANTLRParser.STRING_LITERAL:
+                case ANTLRParser.TOKEN_REF:
+                case ANTLRParser.NOT:
+                    // terminals
+                    if (mode.IncludeUnfactoredAlts())
+                    {
+                        return element;
+                    }
 
-                return null;
+                    return null;
 
-            case ANTLRParser.EPSILON:
-                // empty tree
-                if (mode.IncludeUnfactoredAlts())
-                {
-                    return element;
-                }
+                case ANTLRParser.EPSILON:
+                    // empty tree
+                    if (mode.IncludeUnfactoredAlts())
+                    {
+                        return element;
+                    }
 
-                return null;
+                    return null;
 
-            default:
-                // unknown
-                return null;
+                default:
+                    // unknown
+                    return null;
             }
         }
 
         protected virtual RuleVariants CreateLeftFactoredRuleVariant(Rule rule, string factoredElement)
         {
-            RuleAST ast = (RuleAST)rule.ast.DupTree();
-            BlockAST block = (BlockAST)ast.GetFirstChildWithType(ANTLRParser.BLOCK);
+            RuleAST ast = (RuleAST) rule.ast.DupTree();
+            BlockAST block = (BlockAST) ast.GetFirstChildWithType(ANTLRParser.BLOCK);
 
             RuleAST unfactoredAst = null;
             BlockAST unfactoredBlock = null;
@@ -743,16 +748,16 @@ namespace Antlr4.Analysis
             }
             else
             {
-                ast = (RuleAST)rule.ast.DupTree();
-                block = (BlockAST)ast.GetFirstChildWithType(ANTLRParser.BLOCK);
+                ast = (RuleAST) rule.ast.DupTree();
+                block = (BlockAST) ast.GetFirstChildWithType(ANTLRParser.BLOCK);
                 if (!TranslateLeftFactoredDecision(block, factoredElement, true, DecisionFactorMode.PARTIAL_FACTORED, false))
                 {
                     // no left factored alts
                     return RuleVariants.NONE;
                 }
 
-                unfactoredAst = (RuleAST)rule.ast.DupTree();
-                unfactoredBlock = (BlockAST)unfactoredAst.GetFirstChildWithType(ANTLRParser.BLOCK);
+                unfactoredAst = (RuleAST) rule.ast.DupTree();
+                unfactoredBlock = (BlockAST) unfactoredAst.GetFirstChildWithType(ANTLRParser.BLOCK);
                 if (!TranslateLeftFactoredDecision(unfactoredBlock, factoredElement, true, DecisionFactorMode.PARTIAL_UNFACTORED, false))
                 {
                     throw new InvalidOperationException("expected unfactored alts for partial factorization");
@@ -764,17 +769,19 @@ namespace Antlr4.Analysis
              */
             {
                 string variantName = ast.GetChild(0).Text + ATNSimulator.RuleLfVariantMarker + factoredElement;
-                ((GrammarAST)ast.GetChild(0)).Token = adaptor.CreateToken(ast.GetChild(0).Type, variantName);
-                GrammarAST ruleParent = (GrammarAST)rule.ast.Parent;
+                ((GrammarAST) ast.GetChild(0)).Token = adaptor.CreateToken(ast.GetChild(0).Type, variantName);
+                GrammarAST ruleParent = (GrammarAST) rule.ast.Parent;
                 ruleParent.InsertChild(rule.ast.ChildIndex + 1, ast);
                 ruleParent.FreshenParentAndChildIndexes(rule.ast.ChildIndex);
 
                 IList<GrammarAST> alts = block.GetAllChildrenWithType(ANTLRParser.ALT);
-                Rule variant = new Rule(_g, ast.GetChild(0).Text, ast, alts.Count);
+                Rule variant = new(_g, ast.GetChild(0).Text, ast, alts.Count);
                 _g.DefineRule(variant);
-                for (int i = 0; i < alts.Count; i++)
+                for (int i = 0;
+                    i < alts.Count;
+                    i++)
                 {
-                    variant.alt[i + 1].ast = (AltAST)alts[i];
+                    variant.alt[i + 1].ast = (AltAST) alts[i];
                 }
             }
 
@@ -784,17 +791,19 @@ namespace Antlr4.Analysis
             if (unfactoredAst != null)
             {
                 string variantName = unfactoredAst.GetChild(0).Text + ATNSimulator.RuleNolfVariantMarker + factoredElement;
-                ((GrammarAST)unfactoredAst.GetChild(0)).Token = adaptor.CreateToken(unfactoredAst.GetChild(0).Type, variantName);
-                GrammarAST ruleParent = (GrammarAST)rule.ast.Parent;
+                ((GrammarAST) unfactoredAst.GetChild(0)).Token = adaptor.CreateToken(unfactoredAst.GetChild(0).Type, variantName);
+                GrammarAST ruleParent = (GrammarAST) rule.ast.Parent;
                 ruleParent.InsertChild(rule.ast.ChildIndex + 1, unfactoredAst);
                 ruleParent.FreshenParentAndChildIndexes(rule.ast.ChildIndex);
 
                 IList<GrammarAST> alts = unfactoredBlock.GetAllChildrenWithType(ANTLRParser.ALT);
-                Rule variant = new Rule(_g, unfactoredAst.GetChild(0).Text, unfactoredAst, alts.Count);
+                Rule variant = new(_g, unfactoredAst.GetChild(0).Text, unfactoredAst, alts.Count);
                 _g.DefineRule(variant);
-                for (int i = 0; i < alts.Count; i++)
+                for (int i = 0;
+                    i < alts.Count;
+                    i++)
                 {
-                    variant.alt[i + 1].ast = (AltAST)alts[i];
+                    variant.alt[i + 1].ast = (AltAST) alts[i];
                 }
             }
 
@@ -810,23 +819,26 @@ namespace Antlr4.Analysis
              * Alternatives are factored where possible; results are combined, and
              * both factored and unfactored alternatives are included in the result.
              */
-            public static readonly DecisionFactorMode COMBINED_FACTOR = new DecisionFactorMode(true, true);
+            public static readonly DecisionFactorMode COMBINED_FACTOR = new(true, true);
+
             /**
              * Factors all alternatives of the decision. The factoring fails if the
              * decision contains one or more alternatives which cannot be factored.
              */
-            public static readonly DecisionFactorMode FULL_FACTOR = new DecisionFactorMode(true, false);
+            public static readonly DecisionFactorMode FULL_FACTOR = new(true, false);
+
             /**
              * Attempts to factor all alternatives of the decision. Alternatives
              * which could not be factored are not included in the result.
              */
-            public static readonly DecisionFactorMode PARTIAL_FACTORED = new DecisionFactorMode(true, false);
+            public static readonly DecisionFactorMode PARTIAL_FACTORED = new(true, false);
+
             /**
              * Attempts to factor all alternatives of the decision, and returns the
              * remaining unfactored alternatives. Alternatives which could be
              * factored are not included in the result.
              */
-            public static readonly DecisionFactorMode PARTIAL_UNFACTORED = new DecisionFactorMode(false, true);
+            public static readonly DecisionFactorMode PARTIAL_UNFACTORED = new(false, true);
 
             private readonly bool includeFactoredAlts;
             private readonly bool includeUnfactoredAlts;
@@ -852,7 +864,7 @@ namespace Antlr4.Analysis
         {
             NONE,
             PARTIALLY_FACTORED,
-            FULLY_FACTORED,
+            FULLY_FACTORED
         }
     }
 }

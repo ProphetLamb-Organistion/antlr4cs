@@ -3,21 +3,27 @@
 
 using System;
 using System.Collections.Generic;
-using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Misc
 {
     /// <summary>A HashMap that remembers the order that the elements were added.</summary>
     /// <remarks>
-    /// A HashMap that remembers the order that the elements were added.
-    /// You can alter the ith element with set(i,value) too :)  Unique list.
-    /// I need the replace/set-element-i functionality so I'm subclassing
-    /// LinkedHashSet.
+    ///     A HashMap that remembers the order that the elements were added.
+    ///     You can alter the ith element with set(i,value) too :)  Unique list.
+    ///     I need the replace/set-element-i functionality so I'm subclassing
+    ///     LinkedHashSet.
     /// </remarks>
     public class OrderedHashSet<T> : LinkedHashSet<T>
     {
         /// <summary>Track the elements as they are added to the set</summary>
-        protected internal List<T> elements = new List<T>();
+        protected internal List<T> elements = new();
+
+        /// <summary>Return the List holding list of table elements.</summary>
+        /// <remarks>
+        ///     Return the List holding list of table elements.  Note that you are
+        ///     NOT getting a copy so don't write to the list.
+        /// </remarks>
+        public virtual IList<T> Elements => elements;
 
         public virtual T Get(int i)
         {
@@ -25,8 +31,8 @@ namespace Antlr4.Misc
         }
 
         /// <summary>
-        /// Replace an existing value with a new value; updates the element
-        /// list and the hash table, but not the key as that has not changed.
+        ///     Replace an existing value with a new value; updates the element
+        ///     list and the hash table, but not the key as that has not changed.
         /// </summary>
         public virtual T Set(int i, T value)
         {
@@ -47,13 +53,13 @@ namespace Antlr4.Misc
         }
 
         /// <summary>
-        /// Add a value to list; keep in hashtable for consistency also;
-        /// Key is object itself.
+        ///     Add a value to list; keep in hashtable for consistency also;
+        ///     Key is object itself.
         /// </summary>
         /// <remarks>
-        /// Add a value to list; keep in hashtable for consistency also;
-        /// Key is object itself.  Good for say asking if a certain string is in
-        /// a list of strings.
+        ///     Add a value to list; keep in hashtable for consistency also;
+        ///     Key is object itself.  Good for say asking if a certain string is in
+        ///     a list of strings.
         /// </remarks>
         public override bool Add(T value)
         {
@@ -63,6 +69,7 @@ namespace Antlr4.Misc
                 // only track if new element not in set
                 elements.Add(value);
             }
+
             return result;
         }
 
@@ -88,8 +95,9 @@ namespace Antlr4.Misc
             {
                 return false;
             }
+
             //		System.out.print("equals " + this + ", " + o+" = ");
-            bool same = elements != null && elements.Equals(((OrderedHashSet<object>)o).elements);
+            bool same = elements != null && elements.Equals(((OrderedHashSet<object>) o).elements);
             //		System.out.println(same);
             return same;
         }
@@ -97,19 +105,6 @@ namespace Antlr4.Misc
         public override IEnumerator<T> GetEnumerator()
         {
             return elements.GetEnumerator();
-        }
-
-        /// <summary>Return the List holding list of table elements.</summary>
-        /// <remarks>
-        /// Return the List holding list of table elements.  Note that you are
-        /// NOT getting a copy so don't write to the list.
-        /// </remarks>
-        public virtual IList<T> Elements
-        {
-            get
-            {
-                return elements;
-            }
         }
 
         public override string ToString()

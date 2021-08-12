@@ -2,9 +2,6 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Antlr4.Runtime;
-using Antlr4.Runtime.Sharpen;
-using Antlr4.Runtime.Tree;
 
 namespace Antlr4.Runtime.Tree.Xpath
 {
@@ -26,13 +23,14 @@ namespace Antlr4.Runtime.Tree.Xpath
             {
                 if (c is ParserRuleContext)
                 {
-                    ParserRuleContext ctx = (ParserRuleContext)c;
-                    if ((ctx.RuleIndex == ruleIndex && !invert) || (ctx.RuleIndex != ruleIndex && invert))
+                    ParserRuleContext ctx = (ParserRuleContext) c;
+                    if (ctx.RuleIndex == ruleIndex && !invert || ctx.RuleIndex != ruleIndex && invert)
                     {
                         nodes.Add(ctx);
                     }
                 }
             }
+
             return nodes;
         }
     }

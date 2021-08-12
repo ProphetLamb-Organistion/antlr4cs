@@ -1,107 +1,107 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net45;net50</TargetFrameworks>
-    <LangVersion>9</LangVersion>
-    <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.0;netstandard2.1;net45;net50</TargetFrameworks>
+        <LangVersion>9</LangVersion>
+        <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
 
-    <RootNamespace>Antlr4.Build.Tasks</RootNamespace>
-    <AssemblyName>Antlr4BuildTasks</AssemblyName>
+        <RootNamespace>Antlr4.Build.Tasks</RootNamespace>
+        <AssemblyName>Antlr4BuildTasks</AssemblyName>
 
-    <AssemblyVersion>4.6.0.0</AssemblyVersion>
-    <FileVersion>4.6.7.0</FileVersion>
-    <InformationalVersion>4.6.7-dev</InformationalVersion>
-    <Description>MSBuild tasks for ANTLR 4 code generation.</Description>
-    <Copyright>Copyright © Sam Harwell 2015</Copyright>
-    <Company>Tunnel Vision Laboratories, LLC</Company>
-    <AssemblyTitle>Antlr4BuildTasks</AssemblyTitle>
-  </PropertyGroup>
+        <AssemblyVersion>4.6.0.0</AssemblyVersion>
+        <FileVersion>4.6.7.0</FileVersion>
+        <InformationalVersion>4.6.7-dev</InformationalVersion>
+        <Description>MSBuild tasks for ANTLR 4 code generation.</Description>
+        <Copyright>Copyright © Sam Harwell 2015</Copyright>
+        <Company>Tunnel Vision Laboratories, LLC</Company>
+        <AssemblyTitle>Antlr4BuildTasks</AssemblyTitle>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DebugType>full</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DebugType>pdbonly</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+        <DebugType>pdbonly</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
 
-  <Choose>
-    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
-      <ItemGroup>
-        <PackageReference Include="Microsoft.Build.Framework" Version="15.7.179" />
-        <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.7.179" />
-      </ItemGroup>
-      <ItemGroup>
-        <ProjectReference Include="..\Antlr4.Tool\Antlr4.Tool.csproj" />
-      </ItemGroup>
-    </When>
-    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
-      <ItemGroup>
-        <PackageReference Include="Microsoft.Build.Framework" Version="15.7.179" />
-        <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.7.179" />
-      </ItemGroup>
-      <ItemGroup>
-        <ProjectReference Include="..\Antlr4.Tool\Antlr4.Tool.csproj" />
-      </ItemGroup>
-    </When>
-    <When Condition="'$(TargetFramework)' == 'net45'">
-      <ItemGroup>
-        <Reference Include="Microsoft.Build.Framework" />
-        <Reference Include="Microsoft.Build.Tasks.v4.0" />
-        <Reference Include="Microsoft.Build.Utilities.v4.0" />
-      </ItemGroup>
-    </When>
-    <When Condition="'$(TargetFramework)' == 'net50'">
-      <ItemGroup>
-        <PackageReference Include="Microsoft.Build.Framework" Version="16.10.0" />
-        <PackageReference Include="Microsoft.Build.Tasks.Core" Version="16.10.0" />
-      </ItemGroup>
-    </When>
-  </Choose>
+    <Choose>
+        <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
+            <ItemGroup>
+                <PackageReference Include="Microsoft.Build.Framework" Version="15.7.179"/>
+                <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.7.179"/>
+            </ItemGroup>
+            <ItemGroup>
+                <ProjectReference Include="..\Antlr4.Tool\Antlr4.Tool.csproj"/>
+            </ItemGroup>
+        </When>
+        <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
+            <ItemGroup>
+                <PackageReference Include="Microsoft.Build.Framework" Version="15.7.179"/>
+                <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.7.179"/>
+            </ItemGroup>
+            <ItemGroup>
+                <ProjectReference Include="..\Antlr4.Tool\Antlr4.Tool.csproj"/>
+            </ItemGroup>
+        </When>
+        <When Condition="'$(TargetFramework)' == 'net45'">
+            <ItemGroup>
+                <Reference Include="Microsoft.Build.Framework"/>
+                <Reference Include="Microsoft.Build.Tasks.v4.0"/>
+                <Reference Include="Microsoft.Build.Utilities.v4.0"/>
+            </ItemGroup>
+        </When>
+        <When Condition="'$(TargetFramework)' == 'net50'">
+            <ItemGroup>
+                <PackageReference Include="Microsoft.Build.Framework" Version="16.10.0"/>
+                <PackageReference Include="Microsoft.Build.Tasks.Core" Version="16.10.0"/>
+            </ItemGroup>
+        </When>
+    </Choose>
 
-  <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile Condition="'$(KeyConfiguration)' == 'Final'">..\..\..\build\keys\Antlr4.snk</AssemblyOriginatorKeyFile>
-    <AssemblyOriginatorKeyFile Condition="'$(KeyConfiguration)' != 'Final'">..\..\..\build\keys\Antlr4.dev.snk</AssemblyOriginatorKeyFile>
-  </PropertyGroup>
+    <PropertyGroup>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile Condition="'$(KeyConfiguration)' == 'Final'">..\..\..\build\keys\Antlr4.snk</AssemblyOriginatorKeyFile>
+        <AssemblyOriginatorKeyFile Condition="'$(KeyConfiguration)' != 'Final'">..\..\..\build\keys\Antlr4.dev.snk</AssemblyOriginatorKeyFile>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="..\..\..\build\keys\Antlr4.dev.snk">
-      <Link>Antlr4.dev.snk</Link>
-    </None>
-    <None Include="..\..\..\build\keys\Antlr4.snk">
-      <Link>Antlr4.snk</Link>
-    </None>
-    <None Include="Antlr4.ProjectItemsSchema.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Antlr4.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="..\..\..\build\keys\Antlr4.dev.snk">
+            <Link>Antlr4.dev.snk</Link>
+        </None>
+        <None Include="..\..\..\build\keys\Antlr4.snk">
+            <Link>Antlr4.snk</Link>
+        </None>
+        <None Include="Antlr4.ProjectItemsSchema.xml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="Antlr4.xml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Include="Antlr4.CodeGenerator.DefaultItems.props">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Antlr4.CodeGenerator.DefaultItems.targets">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Antlr4.CodeGenerator.props">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Antlr4.CodeGenerator.targets">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="Antlr4.CodeGenerator.DefaultItems.props">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="Antlr4.CodeGenerator.DefaultItems.targets">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="Antlr4.CodeGenerator.props">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="Antlr4.CodeGenerator.targets">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
-  <ItemGroup>
-    <CodeAnalysisDictionary Include="..\build\CustomDictionary.xml">
-      <Link>CustomDictionary.xml</Link>
-    </CodeAnalysisDictionary>
-  </ItemGroup>
+    <ItemGroup>
+        <CodeAnalysisDictionary Include="..\build\CustomDictionary.xml">
+            <Link>CustomDictionary.xml</Link>
+        </CodeAnalysisDictionary>
+    </ItemGroup>
 
 </Project>

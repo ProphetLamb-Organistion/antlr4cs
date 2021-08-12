@@ -3,39 +3,46 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
-using Antlr4.Runtime;
-using Antlr4.Runtime.Atn;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.Text;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Tree
 {
     /// <summary>A set of utility routines useful for all kinds of ANTLR trees.</summary>
     public class Trees
     {
-        /// <summary>Print out a whole tree in LISP form.</summary>
-        /// <remarks>
-        /// Print out a whole tree in LISP form.
-        /// <see cref="GetNodeText(ITree, Antlr4.Runtime.Parser)"/>
-        /// is used on the
-        /// node payloads to get the text for the nodes.  Detect
-        /// parse trees and extract data appropriately.
-        /// </remarks>
-        public static string ToStringTree([NotNull] ITree t)
+        private Trees()
         {
-            return ToStringTree(t, (IList<string>)null);
         }
 
         /// <summary>Print out a whole tree in LISP form.</summary>
         /// <remarks>
-        /// Print out a whole tree in LISP form.
-        /// <see cref="GetNodeText(ITree, Antlr4.Runtime.Parser)"/>
-        /// is used on the
-        /// node payloads to get the text for the nodes.  Detect
-        /// parse trees and extract data appropriately.
+        ///     Print out a whole tree in LISP form.
+        ///     <see cref="GetNodeText(ITree, Antlr4.Runtime.Parser)" />
+        ///     is used on the
+        ///     node payloads to get the text for the nodes.  Detect
+        ///     parse trees and extract data appropriately.
         /// </remarks>
-        public static string ToStringTree([NotNull] ITree t, [Nullable] Parser recog)
+        public static string ToStringTree([NotNull] ITree t)
+        {
+            return ToStringTree(t, (IList<string>) null);
+        }
+
+        /// <summary>Print out a whole tree in LISP form.</summary>
+        /// <remarks>
+        ///     Print out a whole tree in LISP form.
+        ///     <see cref="GetNodeText(ITree, Antlr4.Runtime.Parser)" />
+        ///     is used on the
+        ///     node payloads to get the text for the nodes.  Detect
+        ///     parse trees and extract data appropriately.
+        /// </remarks>
+        public static string ToStringTree([NotNull] ITree t, [AllowNull] Parser recog)
         {
             string[] ruleNames = recog != null ? recog.RuleNames : null;
             IList<string> ruleNamesList = ruleNames != null ? Arrays.AsList(ruleNames) : null;
@@ -44,49 +51,54 @@ namespace Antlr4.Runtime.Tree
 
         /// <summary>Print out a whole tree in LISP form.</summary>
         /// <remarks>
-        /// Print out a whole tree in LISP form.
-        /// <see cref="GetNodeText(ITree, Antlr4.Runtime.Parser)"/>
-        /// is used on the
-        /// node payloads to get the text for the nodes.
+        ///     Print out a whole tree in LISP form.
+        ///     <see cref="GetNodeText(ITree, Antlr4.Runtime.Parser)" />
+        ///     is used on the
+        ///     node payloads to get the text for the nodes.
         /// </remarks>
-        public static string ToStringTree([NotNull] ITree t, [Nullable] IList<string> ruleNames)
+        public static string ToStringTree([NotNull] ITree t, [AllowNull] IList<string> ruleNames)
         {
             string s = Utils.EscapeWhitespace(GetNodeText(t, ruleNames), false);
             if (t.ChildCount == 0)
             {
                 return s;
             }
-            StringBuilder buf = new StringBuilder();
+
+            StringBuilder buf = new();
             buf.Append("(");
             s = Utils.EscapeWhitespace(GetNodeText(t, ruleNames), false);
             buf.Append(s);
             buf.Append(' ');
-            for (int i = 0; i < t.ChildCount; i++)
+            for (int i = 0;
+                i < t.ChildCount;
+                i++)
             {
                 if (i > 0)
                 {
                     buf.Append(' ');
                 }
+
                 buf.Append(ToStringTree(t.GetChild(i), ruleNames));
             }
+
             buf.Append(")");
             return buf.ToString();
         }
 
-        public static string GetNodeText([NotNull] ITree t, [Nullable] Parser recog)
+        public static string GetNodeText([NotNull] ITree t, [AllowNull] Parser recog)
         {
             string[] ruleNames = recog != null ? recog.RuleNames : null;
             IList<string> ruleNamesList = ruleNames != null ? Arrays.AsList(ruleNames) : null;
             return GetNodeText(t, ruleNamesList);
         }
 
-        public static string GetNodeText([NotNull] ITree t, [Nullable] IList<string> ruleNames)
+        public static string GetNodeText([NotNull] ITree t, [AllowNull] IList<string> ruleNames)
         {
             if (ruleNames != null)
             {
                 if (t is IRuleNode)
                 {
-                    RuleContext ruleContext = ((IRuleNode)t).RuleContext;
+                    RuleContext ruleContext = ((IRuleNode) t).RuleContext;
                     int ruleIndex = ruleContext.RuleIndex;
                     string ruleName = ruleNames[ruleIndex];
                     int altNumber = ruleContext.OuterAlternative;
@@ -94,34 +106,33 @@ namespace Antlr4.Runtime.Tree
                     {
                         return ruleName + ":" + altNumber;
                     }
+
                     return ruleName;
                 }
-                else
+
+                if (t is IErrorNode)
                 {
-                    if (t is IErrorNode)
+                    return t.ToString();
+                }
+
+                if (t is ITerminalNode)
+                {
+                    IToken symbol = ((ITerminalNode) t).Symbol;
+                    if (symbol != null)
                     {
-                        return t.ToString();
-                    }
-                    else
-                    {
-                        if (t is ITerminalNode)
-                        {
-                            IToken symbol = ((ITerminalNode)t).Symbol;
-                            if (symbol != null)
-                            {
-                                string s = symbol.Text;
-                                return s;
-                            }
-                        }
+                        string s = symbol.Text;
+                        return s;
                     }
                 }
             }
+
             // no recog for rule names
             object payload = t.Payload;
             if (payload is IToken)
             {
-                return ((IToken)payload).Text;
+                return ((IToken) payload).Text;
             }
+
             return t.Payload.ToString();
         }
 
@@ -129,17 +140,20 @@ namespace Antlr4.Runtime.Tree
         public static IList<ITree> GetChildren(ITree t)
         {
             IList<ITree> kids = new List<ITree>();
-            for (int i = 0; i < t.ChildCount; i++)
+            for (int i = 0;
+                i < t.ChildCount;
+                i++)
             {
                 kids.Add(t.GetChild(i));
             }
+
             return kids;
         }
 
         /// <summary>Return a list of all ancestors of this node.</summary>
         /// <remarks>
-        /// Return a list of all ancestors of this node.  The first node of
-        /// list is the root and the last is the parent of this node.
+        ///     Return a list of all ancestors of this node.  The first node of
+        ///     list is the root and the last is the parent of this node.
         /// </remarks>
         /// <since>4.5.1</since>
         [return: NotNull]
@@ -149,6 +163,7 @@ namespace Antlr4.Runtime.Tree
             {
                 return Collections.EmptyList<ITree>();
             }
+
             IList<ITree> ancestors = new List<ITree>();
             t = t.Parent;
             while (t != null)
@@ -157,13 +172,14 @@ namespace Antlr4.Runtime.Tree
                 // insert at start
                 t = t.Parent;
             }
+
             return ancestors;
         }
 
         /// <summary>Return true if t is u's parent or a node on path to root from u.</summary>
         /// <remarks>
-        /// Return true if t is u's parent or a node on path to root from u.
-        /// Use == not equals().
+        ///     Return true if t is u's parent or a node on path to root from u.
+        ///     Use == not equals().
         /// </remarks>
         /// <since>4.5.1</since>
         public static bool IsAncestorOf(ITree t, ITree u)
@@ -172,6 +188,7 @@ namespace Antlr4.Runtime.Tree
             {
                 return false;
             }
+
             ITree p = u.Parent;
             while (p != null)
             {
@@ -179,8 +196,10 @@ namespace Antlr4.Runtime.Tree
                 {
                     return true;
                 }
+
                 p = p.Parent;
             }
+
             return false;
         }
 
@@ -206,7 +225,7 @@ namespace Antlr4.Runtime.Tree
             // check this node (the root) first
             if (findTokens && t is ITerminalNode)
             {
-                ITerminalNode tnode = (ITerminalNode)t;
+                ITerminalNode tnode = (ITerminalNode) t;
                 if (tnode.Symbol.Type == index)
                 {
                     nodes.Add(t);
@@ -216,15 +235,18 @@ namespace Antlr4.Runtime.Tree
             {
                 if (!findTokens && t is ParserRuleContext)
                 {
-                    ParserRuleContext ctx = (ParserRuleContext)t;
+                    ParserRuleContext ctx = (ParserRuleContext) t;
                     if (ctx.RuleIndex == index)
                     {
                         nodes.Add(t);
                     }
                 }
             }
+
             // check children
-            for (int i = 0; i < t.ChildCount; i++)
+            for (int i = 0;
+                i < t.ChildCount;
+                i++)
             {
                 _findAllNodes(t.GetChild(i), index, findTokens, nodes);
             }
@@ -234,38 +256,43 @@ namespace Antlr4.Runtime.Tree
         /// <since>4.5.1</since>
         public static IList<IParseTree> GetDescendants(IParseTree t)
         {
-            List<IParseTree> nodes = new List<IParseTree>();
+            var nodes = new List<IParseTree>();
             nodes.Add(t);
             int n = t.ChildCount;
-            for (int i = 0; i < n; i++)
+            for (int i = 0;
+                i < n;
+                i++)
             {
                 nodes.AddRange(GetDescendants(t.GetChild(i)));
             }
+
             return nodes;
         }
 
-        [System.ObsoleteAttribute(@"")]
+        [ObsoleteAttribute(@"")]
         public static IList<IParseTree> Descendants(IParseTree t)
         {
             return GetDescendants(t);
         }
 
         /// <summary>
-        /// Find smallest subtree of t enclosing range startTokenIndex..stopTokenIndex
-        /// inclusively using postorder traversal.
+        ///     Find smallest subtree of t enclosing range startTokenIndex..stopTokenIndex
+        ///     inclusively using postorder traversal.
         /// </summary>
         /// <remarks>
-        /// Find smallest subtree of t enclosing range startTokenIndex..stopTokenIndex
-        /// inclusively using postorder traversal.  Recursive depth-first-search.
+        ///     Find smallest subtree of t enclosing range startTokenIndex..stopTokenIndex
+        ///     inclusively using postorder traversal.  Recursive depth-first-search.
         /// </remarks>
         /// <since>4.5</since>
-        [return: Nullable]
+        [return: MaybeNull]
         public static ParserRuleContext GetRootOfSubtreeEnclosingRegion([NotNull] IParseTree t, int startTokenIndex, int stopTokenIndex)
         {
             // inclusive
             // inclusive
             int n = t.ChildCount;
-            for (int i = 0; i < n; i++)
+            for (int i = 0;
+                i < n;
+                i++)
             {
                 IParseTree child = t.GetChild(i);
                 ParserRuleContext r = GetRootOfSubtreeEnclosingRegion(child, startTokenIndex, stopTokenIndex);
@@ -274,9 +301,10 @@ namespace Antlr4.Runtime.Tree
                     return r;
                 }
             }
+
             if (t is ParserRuleContext)
             {
-                ParserRuleContext r = (ParserRuleContext)t;
+                ParserRuleContext r = (ParserRuleContext) t;
                 if (startTokenIndex >= r.Start.TokenIndex && (r.Stop == null || stopTokenIndex <= r.Stop.TokenIndex))
                 {
                     // is range fully contained in t?
@@ -284,19 +312,20 @@ namespace Antlr4.Runtime.Tree
                     return r;
                 }
             }
+
             return null;
         }
 
         /// <summary>
-        /// Replace any subtree siblings of root that are completely to left
-        /// or right of lookahead range with a CommonToken(Token.INVALID_TYPE,"...")
-        /// node.
+        ///     Replace any subtree siblings of root that are completely to left
+        ///     or right of lookahead range with a CommonToken(Token.INVALID_TYPE,"...")
+        ///     node.
         /// </summary>
         /// <remarks>
-        /// Replace any subtree siblings of root that are completely to left
-        /// or right of lookahead range with a CommonToken(Token.INVALID_TYPE,"...")
-        /// node. The source interval for t is not altered to suit smaller range!
-        /// WARNING: destructive to t.
+        ///     Replace any subtree siblings of root that are completely to left
+        ///     or right of lookahead range with a CommonToken(Token.INVALID_TYPE,"...")
+        ///     node. The source interval for t is not altered to suit smaller range!
+        ///     WARNING: destructive to t.
         /// </remarks>
         /// <since>4.5.1</since>
         public static void StripChildrenOutOfRange(ParserRuleContext t, ParserRuleContext root, int startIndex, int stopIndex)
@@ -305,7 +334,10 @@ namespace Antlr4.Runtime.Tree
             {
                 return;
             }
-            for (int i = 0; i < t.ChildCount; i++)
+
+            for (int i = 0;
+                i < t.ChildCount;
+                i++)
             {
                 IParseTree child = t.GetChild(i);
                 Interval range = child.SourceInterval;
@@ -314,7 +346,7 @@ namespace Antlr4.Runtime.Tree
                     if (IsAncestorOf(child, root))
                     {
                         // replace only if subtree doesn't have displayed root
-                        CommonToken abbrev = new CommonToken(TokenConstants.InvalidType, "...");
+                        CommonToken abbrev = new(TokenConstants.InvalidType, "...");
                         t.children.Set(i, new TerminalNodeImpl(abbrev));
                     }
                 }
@@ -329,8 +361,11 @@ namespace Antlr4.Runtime.Tree
             {
                 return t;
             }
+
             int n = t.ChildCount;
-            for (int i = 0; i < n; i++)
+            for (int i = 0;
+                i < n;
+                i++)
             {
                 ITree u = FindNodeSuchThat(t.GetChild(i), pred);
                 if (u != null)
@@ -338,11 +373,8 @@ namespace Antlr4.Runtime.Tree
                     return u;
                 }
             }
-            return null;
-        }
 
-        private Trees()
-        {
+            return null;
         }
     }
 }

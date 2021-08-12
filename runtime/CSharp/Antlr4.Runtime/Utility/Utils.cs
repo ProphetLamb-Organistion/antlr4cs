@@ -3,16 +3,20 @@
 
 using System;
 using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
 using System.Text;
-using Antlr4.Runtime.Sharpen;
 
-namespace Antlr4.Runtime.Misc
+namespace Antlr4.Runtime.Utility
 {
     public class Utils
     {
         public static string Join<T>(string separator, IEnumerable<T> items)
         {
-            return string.Join(separator, items);
+            return String.Join(separator, items);
         }
 
         public static int NumNonnull(object[] data)
@@ -22,6 +26,7 @@ namespace Antlr4.Runtime.Misc
             {
                 return n;
             }
+
             foreach (object o in data)
             {
                 if (o != null)
@@ -29,6 +34,7 @@ namespace Antlr4.Runtime.Misc
                     n++;
                 }
             }
+
             return n;
         }
 
@@ -38,6 +44,7 @@ namespace Antlr4.Runtime.Misc
             {
                 return;
             }
+
             while (data.Contains(value))
             {
                 data.Remove(value);
@@ -46,8 +53,8 @@ namespace Antlr4.Runtime.Misc
 
         public static string EscapeWhitespace(string s, bool escapeSpaces)
         {
-            StringBuilder buf = new StringBuilder();
-            foreach (char c in s.ToCharArray())
+            StringBuilder buf = new();
+            foreach (char c in s)
             {
                 if (c == ' ' && escapeSpaces)
                 {
@@ -79,13 +86,16 @@ namespace Antlr4.Runtime.Misc
                     }
                 }
             }
+
             return buf.ToString();
         }
 
         public static void RemoveAll<T>([NotNull] IList<T> list, Predicate<T> predicate)
         {
             int j = 0;
-            for (int i = 0; i < list.Count; i++)
+            for (int i = 0;
+                i < list.Count;
+                i++)
             {
                 T item = list[i];
                 if (!predicate(item))
@@ -94,9 +104,11 @@ namespace Antlr4.Runtime.Misc
                     {
                         list[j] = item;
                     }
+
                     j++;
                 }
             }
+
             while (j < list.Count)
             {
                 list.RemoveAt(list.Count - 1);
@@ -105,16 +117,19 @@ namespace Antlr4.Runtime.Misc
 
         /// <summary>Convert array of strings to string&#x2192;index map.</summary>
         /// <remarks>
-        /// Convert array of strings to string&#x2192;index map. Useful for
-        /// converting rulenames to name&#x2192;ruleindex map.
+        ///     Convert array of strings to string&#x2192;index map. Useful for
+        ///     converting rulenames to name&#x2192;ruleindex map.
         /// </remarks>
         public static IDictionary<string, int> ToMap(string[] keys)
         {
             IDictionary<string, int> m = new Dictionary<string, int>();
-            for (int i = 0; i < keys.Length; i++)
+            for (int i = 0;
+                i < keys.Length;
+                i++)
             {
                 m[keys[i]] = i;
             }
+
             return m;
         }
 
@@ -124,11 +139,15 @@ namespace Antlr4.Runtime.Misc
             {
                 return null;
             }
+
             char[] cdata = new char[data.Count];
-            for (int i = 0; i < data.Count; i++)
+            for (int i = 0;
+                i < data.Count;
+                i++)
             {
-                cdata[i] = (char)data[i];
+                cdata[i] = (char) data[i];
             }
+
             return cdata;
         }
 
@@ -136,13 +155,14 @@ namespace Antlr4.Runtime.Misc
         [return: NotNull]
         public static IntervalSet ToSet([NotNull] BitSet bits)
         {
-            IntervalSet s = new IntervalSet();
+            IntervalSet s = new();
             int i = bits.NextSetBit(0);
             while (i >= 0)
             {
                 s.Add(i);
                 i = bits.NextSetBit(i + 1);
             }
+
             return s;
         }
     }

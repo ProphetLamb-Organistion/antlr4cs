@@ -1,18 +1,21 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
 
 namespace Antlr4.Runtime.Atn
 {
     public sealed class ActionTransition : Transition
     {
-        public readonly int ruleIndex;
-
         public readonly int actionIndex;
 
         public readonly bool isCtxDependent;
+        public readonly int ruleIndex;
 
         public ActionTransition([NotNull] ATNState target, int ruleIndex)
             : this(target, ruleIndex, -1, false)
@@ -28,21 +31,9 @@ namespace Antlr4.Runtime.Atn
             this.isCtxDependent = isCtxDependent;
         }
 
-        public override Antlr4.Runtime.Atn.TransitionType TransitionType
-        {
-            get
-            {
-                return Antlr4.Runtime.Atn.TransitionType.Action;
-            }
-        }
+        public override TransitionType TransitionType => TransitionType.Action;
 
-        public override bool IsEpsilon
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool IsEpsilon => true;
 
         // we are to be ignored by analysis 'cept for predicates
         public override bool Matches(int symbol, int minVocabSymbol, int maxVocabSymbol)

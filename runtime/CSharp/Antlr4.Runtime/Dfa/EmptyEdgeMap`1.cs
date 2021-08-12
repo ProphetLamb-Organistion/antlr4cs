@@ -3,14 +3,13 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime.Dfa
 {
     /// <summary>
-    /// This implementation of
-    /// <see cref="AbstractEdgeMap{T}"/>
-    /// represents an empty edge map.
+    ///     This implementation of
+    ///     <see cref="AbstractEdgeMap{T}" />
+    ///     represents an empty edge map.
     /// </summary>
     /// <author>Sam Harwell</author>
     public sealed class EmptyEdgeMap<T> : AbstractEdgeMap<T>
@@ -21,6 +20,12 @@ namespace Antlr4.Runtime.Dfa
         {
         }
 
+        public override int Count => 0;
+
+        public override bool IsEmpty => true;
+
+        public override T this[int key] => null;
+
         public override AbstractEdgeMap<T> Put(int key, T value)
         {
             if (value == null || key < minIndex || key > maxIndex)
@@ -28,6 +33,7 @@ namespace Antlr4.Runtime.Dfa
                 // remains empty
                 return this;
             }
+
             return new SingletonEdgeMap<T>(minIndex, maxIndex, key, value);
         }
 
@@ -41,38 +47,14 @@ namespace Antlr4.Runtime.Dfa
             return this;
         }
 
-        public override int Count
-        {
-            get
-            {
-                return 0;
-            }
-        }
-
-        public override bool IsEmpty
-        {
-            get
-            {
-                return true;
-            }
-        }
-
         public override bool ContainsKey(int key)
         {
             return false;
         }
 
-        public override T this[int key]
-        {
-            get
-            {
-                return null;
-            }
-        }
-
         public override ReadOnlyDictionary<int, T> ToMap()
         {
-            Dictionary<int, T> result = new Dictionary<int, T>();
+            var result = new Dictionary<int, T>();
             return new ReadOnlyDictionary<int, T>(result);
         }
     }

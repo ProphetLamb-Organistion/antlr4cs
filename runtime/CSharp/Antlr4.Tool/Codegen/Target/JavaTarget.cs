@@ -28,19 +28,16 @@
  *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
+using System.Threading;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen.Target
 {
-    using System.Collections.Generic;
-    using System.Globalization;
-    using System.Text;
-    using System.Threading;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool.Ast;
-    using ArgumentException = System.ArgumentException;
-    using Convert = System.Convert;
-
     /**
-     *
      * @author Sam Harwell
      */
     public class JavaTarget : AbstractTarget
@@ -48,21 +45,23 @@ namespace Antlr4.Codegen.Target
         /**
          * The Java target can cache the code generation templates.
          */
-        private static readonly ThreadLocal<TemplateGroup> targetTemplates = new ThreadLocal<TemplateGroup>();
+        private static readonly ThreadLocal<TemplateGroup> targetTemplates = new();
 
         protected static readonly string[] javaKeywords =
-            {
-                "abstract", "assert", "boolean", "break", "byte", "case", "catch",
-                "char", "class", "const", "continue", "default", "do", "double", "else",
-                "enum", "extends", "false", "final", "finally", "float", "for", "goto",
-                "if", "implements", "import", "instanceof", "int", "interface",
-                "long", "native", "new", "null", "package", "private", "protected",
-                "public", "return", "short", "static", "strictfp", "super", "switch",
-                "synchronized", "this", "throw", "throws", "transient", "true", "try",
-                "void", "volatile", "while"
-            };
+        {
+            "abstract", "assert", "boolean", "break", "byte", "case", "catch",
+            "char", "class", "const", "continue", "default", "do", "double", "else",
+            "enum", "extends", "false", "final", "finally", "float", "for", "goto",
+            "if", "implements", "import", "instanceof", "int", "interface",
+            "long", "native", "new", "null", "package", "private", "protected",
+            "public", "return", "short", "static", "strictfp", "super", "switch",
+            "synchronized", "this", "throw", "throws", "transient", "true", "try",
+            "void", "volatile", "while"
+        };
 
-        /** Avoid grammar symbols in this set to prevent conflicts in gen'd code. */
+        /**
+         * Avoid grammar symbols in this set to prevent conflicts in gen'd code.
+         */
         protected readonly ISet<string> badWords = new HashSet<string>();
 
         public JavaTarget(CodeGenerator gen)
@@ -90,28 +89,32 @@ namespace Antlr4.Codegen.Target
         /**
          * {@inheritDoc}
          * <p>
-         * For Java, this is the translation {@code 'a\n"'} → {@code "a\n\""}.
-         * Expect single quotes around the incoming literal. Just flip the quotes
-         * and replace double quotes with {@code \"}.
+         *     For Java, this is the translation {@code 'a\n"'} → {@code "a\n\""}.
+         *     Expect single quotes around the incoming literal. Just flip the quotes
+         *     and replace double quotes with {@code \"}.
          * </p>
          * <p>
-         * Note that we have decided to allow people to use '\"' without penalty, so
-         * we must build the target string in a loop as {@link String#replace}
-         * cannot handle both {@code \"} and {@code "} without a lot of messing
-         * around.
+         *     Note that we have decided to allow people to use '\"' without penalty, so
+         *     we must build the target string in a loop as {@link String#replace}
+         *     cannot handle both {@code \"} and {@code "} without a lot of messing
+         *     around.
          * </p>
          */
         public override string GetTargetStringLiteralFromANTLRStringLiteral(
             CodeGenerator generator,
             string literal, bool addQuotes)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             string @is = literal;
 
             if (addQuotes)
+            {
                 sb.Append('"');
+            }
 
-            for (int i = 1; i < @is.Length - 1; i++)
+            for (int i = 1;
+                i < @is.Length - 1;
+                i++)
             {
                 if (@is[i] == '\\')
                 {
@@ -123,30 +126,25 @@ namespace Antlr4.Codegen.Target
                     //
                     switch (@is[i + 1])
                     {
-                    // Pass through any escapes that Java also needs
-                    //
-                    case '"':
-                    case 'n':
-                    case 'r':
-                    case 't':
-                    case 'b':
-                    case 'f':
-                    case '\\':
-                        // Pass the escape through
-                        sb.Append('\\');
-                        break;
+                        // Pass through any escapes that Java also needs
+                        //
+                        case '"':
+                        case 'n':
+                        case 'r':
+                        case 't':
+                        case 'b':
+                        case 'f':
+                        case '\\':
+                            // Pass the escape through
+                            sb.Append('\\');
+                            break;
 
-                    case 'u':    // Assume uNNNN
-                                 // Pass the escape through as double \\
-                                 // so that Java leaves as \u0000 string not char
-                        sb.Append('\\');
-                        sb.Append('\\');
-                        break;
-
-                    default:
-                        // Remove the escape by virtue of not adding it here
-                        // Thus \' becomes ' and so on
-                        break;
+                        case 'u': // Assume uNNNN
+                            // Pass the escape through as double \\
+                            // so that Java leaves as \u0000 string not char
+                            sb.Append('\\');
+                            sb.Append('\\');
+                            break;
                     }
 
                     // Go past the \ character
@@ -161,21 +159,24 @@ namespace Antlr4.Codegen.Target
                         sb.Append('\\');
                     }
                 }
+
                 // Add in the next character, which may have been escaped
                 sb.Append(@is[i]);
             }
 
             if (addQuotes)
+            {
                 sb.Append('"');
+            }
 
             return sb.ToString();
         }
 
         public override string EncodeIntAsCharEscape(int v)
         {
-            if (v < char.MinValue || v > char.MaxValue)
+            if (v < Char.MinValue || v > Char.MaxValue)
             {
-                throw new ArgumentException(string.Format("Cannot encode the specified value: {0}", v));
+                throw new ArgumentException($"Cannot encode the specified value: {v}");
             }
 
             if (v >= 0 && v < targetCharValueEscape.Length && targetCharValueEscape[v] != null)
@@ -183,9 +184,9 @@ namespace Antlr4.Codegen.Target
                 return targetCharValueEscape[v];
             }
 
-            if (v >= 0x20 && v < 127 && (!char.IsDigit((char)v) || v == '8' || v == '9'))
+            if (v >= 0x20 && v < 127 && (!Char.IsDigit((char) v) || v == '8' || v == '9'))
             {
-                return ((char)v).ToString();
+                return ((char) v).ToString();
             }
 
             if (v >= 0 && v <= 127)
@@ -230,7 +231,7 @@ namespace Antlr4.Codegen.Target
                 if ("java-escape".Equals(formatString))
                 {
                     // 5C is the hex code for the \ itself
-                    return ((string)o).Replace("\\u", "\\u005Cu");
+                    return ((string) o).Replace("\\u", "\\u005Cu");
                 }
 
                 return base.ToString(o, formatString, culture);

@@ -1,23 +1,24 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Semantics
 {
-    using System.Collections.Generic;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using CommonTree = Antlr.Runtime.Tree.CommonTree;
-    using IToken = Antlr.Runtime.IToken;
-    using ITree = Antlr.Runtime.Tree.ITree;
-    using Path = System.IO.Path;
-
-    /** No side-effects except for setting options into the appropriate node.
-     *  TODO:  make the side effects into a separate pass this
-     *
+    /**
+     * No side-effects except for setting options into the appropriate node.
+     * TODO:  make the side effects into a separate pass this
+     * 
      * Invokes check rules for these:
-     *
+     * 
      * FILE_AND_GRAMMAR_NAME_DIFFER
      * LEXER_RULES_NOT_ALLOWED
      * PARSER_RULES_NOT_ALLOWED
@@ -40,11 +41,40 @@ namespace Antlr4.Semantics
      */
     public class BasicSemanticChecks : GrammarTreeVisitor
     {
-        /** Set of valid imports.  Maps delegate to set of delegator grammar types.
-         *  validDelegations.get(LEXER) gives list of the kinds of delegators
-         *  that can import lexers.
+        /**
+         * Set of valid imports.  Maps delegate to set of delegator grammar types.
+         * validDelegations.get(LEXER) gives list of the kinds of delegators
+         * that can import lexers.
          */
-        public static Runtime.Misc.MultiMap<int, int> validImportTypes = new Runtime.Misc.MultiMap<int, int>();
+        public static MultiMap<int, int> validImportTypes = new();
+
+        /**
+         * When this is {@code true}, the semantic checks will report
+         * {@link ErrorType#UNRECOGNIZED_ASSOC_OPTION} where appropriate. This may
+         * be set to {@code false} to disable this specific check.
+         * <p>The default value is {@code true}.</p>
+         */
+        public bool checkAssocElementOption = true;
+
+        public ErrorManager errMgr;
+
+        public Grammar g;
+
+        /**
+         * This is {@code true} from the time {@link #discoverLexerRule} is called
+         * for a lexer rule with the {@code fragment} modifier until
+         * {@link #exitLexerRule} is called.
+         */
+        private bool inFragmentRule;
+
+        /**
+         * This field is used for reporting the {@link ErrorType#MODE_WITHOUT_RULES}
+         * error when necessary.
+         */
+        protected int nonFragmentRuleCount;
+
+        public RuleCollector ruleCollector;
+
         static BasicSemanticChecks()
         {
             validImportTypes.Map(ANTLRParser.LEXER, ANTLRParser.LEXER);
@@ -56,37 +86,11 @@ namespace Antlr4.Semantics
             validImportTypes.Map(ANTLRParser.COMBINED, ANTLRParser.COMBINED);
         }
 
-        public Grammar g;
-        public RuleCollector ruleCollector;
-        public ErrorManager errMgr;
-
-        /**
-         * When this is {@code true}, the semantic checks will report
-         * {@link ErrorType#UNRECOGNIZED_ASSOC_OPTION} where appropriate. This may
-         * be set to {@code false} to disable this specific check.
-         *
-         * <p>The default value is {@code true}.</p>
-         */
-        public bool checkAssocElementOption = true;
-
-        /**
-         * This field is used for reporting the {@link ErrorType#MODE_WITHOUT_RULES}
-         * error when necessary.
-         */
-        protected int nonFragmentRuleCount;
-
-        /**
-         * This is {@code true} from the time {@link #discoverLexerRule} is called
-         * for a lexer rule with the {@code fragment} modifier until
-         * {@link #exitLexerRule} is called.
-         */
-        private bool inFragmentRule;
-
         public BasicSemanticChecks(Grammar g, RuleCollector ruleCollector)
         {
             this.g = g;
             this.ruleCollector = ruleCollector;
-            this.errMgr = g.tool.errMgr;
+            errMgr = g.tool.errMgr;
         }
 
         public override ErrorManager GetErrorManager()
@@ -109,8 +113,11 @@ namespace Antlr4.Semantics
         public override void FinishPrequels(GrammarAST firstPrequel)
         {
             if (firstPrequel == null)
+            {
                 return;
-            GrammarAST parent = (GrammarAST)firstPrequel.Parent;
+            }
+
+            GrammarAST parent = (GrammarAST) firstPrequel.Parent;
             IList<GrammarAST> options = parent.GetAllChildrenWithType(OPTIONS);
             IList<GrammarAST> imports = parent.GetAllChildrenWithType(IMPORT);
             IList<GrammarAST> tokens = parent.GetAllChildrenWithType(TOKENS_SPEC);
@@ -141,12 +148,12 @@ namespace Antlr4.Semantics
                 if (tree.ChildCount > 0)
                 {
                     name = tree.GetChild(0).Text;
-                    if (string.IsNullOrEmpty(name))
+                    if (String.IsNullOrEmpty(name))
                     {
                         name = "?";
                     }
 
-                    token = ((GrammarAST)tree.GetChild(0)).Token;
+                    token = ((GrammarAST) tree.GetChild(0)).Token;
                 }
 
                 g.tool.errMgr.GrammarError(ErrorType.MODE_WITHOUT_RULES, g.fileName, token, name, g);
@@ -158,23 +165,23 @@ namespace Antlr4.Semantics
             if (!g.IsLexer())
             {
                 g.tool.errMgr.GrammarError(ErrorType.MODE_NOT_IN_LEXER, g.fileName,
-                                           ID.Token, ID.Token.Text, g);
+                    ID.Token, ID.Token.Text, g);
             }
         }
 
         public override void DiscoverRule(RuleAST rule, GrammarAST ID,
-                                 IList<GrammarAST> modifiers,
-                                 ActionAST arg, ActionAST returns,
-                                 GrammarAST thrws, GrammarAST options,
-                                 ActionAST locals,
-                                 IList<GrammarAST> actions, GrammarAST block)
+            IList<GrammarAST> modifiers,
+            ActionAST arg, ActionAST returns,
+            GrammarAST thrws, GrammarAST options,
+            ActionAST locals,
+            IList<GrammarAST> actions, GrammarAST block)
         {
             // TODO: chk that all or no alts have "# label"
             CheckInvalidRuleDef(ID.Token);
         }
 
         public override void DiscoverLexerRule(RuleAST rule, GrammarAST ID, IList<GrammarAST> modifiers,
-                                      GrammarAST block)
+            GrammarAST block)
         {
             CheckInvalidRuleDef(ID.Token);
 
@@ -207,12 +214,12 @@ namespace Antlr4.Semantics
 
         public override void RuleOption(GrammarAST ID, GrammarAST valueAST)
         {
-            CheckOptions((GrammarAST)ID.GetAncestor(RULE), ID.Token, valueAST);
+            CheckOptions((GrammarAST) ID.GetAncestor(RULE), ID.Token, valueAST);
         }
 
         public override void BlockOption(GrammarAST ID, GrammarAST valueAST)
         {
-            CheckOptions((GrammarAST)ID.GetAncestor(BLOCK), ID.Token, valueAST);
+            CheckOptions((GrammarAST) ID.GetAncestor(BLOCK), ID.Token, valueAST);
         }
 
         public override void GrammarOption(GrammarAST ID, GrammarAST valueAST)
@@ -264,17 +271,16 @@ namespace Antlr4.Semantics
         /**
          * This method detects the following errors, which require analysis across
          * the whole grammar for rules according to their base context.
-         *
          * <ul>
-         * <li>{@link ErrorType#RULE_WITH_TOO_FEW_ALT_LABELS_GROUP}</li>
-         * <li>{@link ErrorType#BASE_CONTEXT_MUST_BE_RULE_NAME}</li>
-         * <li>{@link ErrorType#BASE_CONTEXT_CANNOT_BE_TRANSITIVE}</li>
-         * <li>{@link ErrorType#LEXER_RULE_CANNOT_HAVE_BASE_CONTEXT}</li>
+         *     <li>{@link ErrorType#RULE_WITH_TOO_FEW_ALT_LABELS_GROUP}</li>
+         *     <li>{@link ErrorType#BASE_CONTEXT_MUST_BE_RULE_NAME}</li>
+         *     <li>{@link ErrorType#BASE_CONTEXT_CANNOT_BE_TRANSITIVE}</li>
+         *     <li>{@link ErrorType#LEXER_RULE_CANNOT_HAVE_BASE_CONTEXT}</li>
          * </ul>
          */
         public override void FinishGrammar(GrammarRootAST root, GrammarAST ID)
         {
-            Runtime.Misc.MultiMap<string, Rule> baseContexts = new Runtime.Misc.MultiMap<string, Rule>();
+            var baseContexts = new MultiMap<string, Rule>();
             foreach (Rule r in ruleCollector.rules.Values)
             {
                 GrammarAST optionAST = r.ast.GetOptionAST("baseContext");
@@ -285,7 +291,7 @@ namespace Antlr4.Semantics
                     {
                         IToken errorToken = optionAST.Token;
                         g.tool.errMgr.GrammarError(ErrorType.LEXER_RULE_CANNOT_HAVE_BASE_CONTEXT,
-                                                   g.fileName, errorToken, r.name);
+                            g.fileName, errorToken, r.name);
                     }
 
                     continue;
@@ -307,7 +313,7 @@ namespace Antlr4.Semantics
                     {
                         IToken errorToken = optionAST.Token;
                         g.tool.errMgr.GrammarError(ErrorType.BASE_CONTEXT_CANNOT_BE_TRANSITIVE,
-                                                   g.fileName, errorToken, r.name);
+                            g.fileName, errorToken, r.name);
                     }
                 }
 
@@ -323,11 +329,11 @@ namespace Antlr4.Semantics
                     }
                     else
                     {
-                        errorToken = ((CommonTree)r.ast.GetChild(0)).Token;
+                        errorToken = ((CommonTree) r.ast.GetChild(0)).Token;
                     }
 
                     g.tool.errMgr.GrammarError(ErrorType.BASE_CONTEXT_MUST_BE_RULE_NAME,
-                                               g.fileName, errorToken, r.name);
+                        g.fileName, errorToken, r.name);
                 }
             }
 
@@ -364,7 +370,7 @@ namespace Antlr4.Semantics
                 {
                     Rule errorRule = entry.Value[0];
                     g.tool.errMgr.GrammarError(ErrorType.RULE_WITH_TOO_FEW_ALT_LABELS_GROUP,
-                                               g.fileName, ((CommonTree)errorRule.ast.GetChild(0)).Token, errorRule.name);
+                        g.fileName, ((CommonTree) errorRule.ast.GetChild(0)).Token, errorRule.name);
                 }
             }
         }
@@ -372,13 +378,18 @@ namespace Antlr4.Semantics
         public override void FinishRule(RuleAST rule, GrammarAST ID, GrammarAST block)
         {
             if (rule.IsLexerRule())
-                return;
-            BlockAST blk = (BlockAST)rule.GetFirstChildWithType(BLOCK);
-            int nalts = blk.ChildCount;
-            GrammarAST idAST = (GrammarAST)rule.GetChild(0);
-            for (int i = 0; i < nalts; i++)
             {
-                AltAST altAST = (AltAST)blk.GetChild(i);
+                return;
+            }
+
+            BlockAST blk = (BlockAST) rule.GetFirstChildWithType(BLOCK);
+            int nalts = blk.ChildCount;
+            GrammarAST idAST = (GrammarAST) rule.GetChild(0);
+            for (int i = 0;
+                i < nalts;
+                i++)
+            {
+                AltAST altAST = (AltAST) blk.GetChild(i);
                 if (altAST.altLabel != null)
                 {
                     string altLabel = altAST.altLabel.Text;
@@ -388,31 +399,36 @@ namespace Antlr4.Semantics
                     if (ruleCollector.rules.TryGetValue(Utils.Decapitalize(altLabel), out r) && r != null)
                     {
                         g.tool.errMgr.GrammarError(ErrorType.ALT_LABEL_CONFLICTS_WITH_RULE,
-                                                   g.fileName, altAST.altLabel.Token,
-                                                   altLabel,
-                                                   r.name);
+                            g.fileName, altAST.altLabel.Token,
+                            altLabel,
+                            r.name);
                     }
+
                     // Now verify that label X or x doesn't conflict with label
                     // in another rule. altLabelToRuleName has both X and x mapped.
                     string prevRuleForLabel;
                     if (ruleCollector.altLabelToRuleName.TryGetValue(altLabel, out prevRuleForLabel) && prevRuleForLabel != null && !prevRuleForLabel.Equals(rule.GetRuleName()))
                     {
                         g.tool.errMgr.GrammarError(ErrorType.ALT_LABEL_REDEF,
-                                                   g.fileName, altAST.altLabel.Token,
-                                                   altLabel,
-                                                   rule.GetRuleName(),
-                                                   prevRuleForLabel);
+                            g.fileName, altAST.altLabel.Token,
+                            altLabel,
+                            rule.GetRuleName(),
+                            prevRuleForLabel);
                     }
                 }
             }
+
             IList<GrammarAST> altLabels;
             int numAltLabels = 0;
             if (ruleCollector.ruleToAltLabels.TryGetValue(rule.GetRuleName(), out altLabels) && altLabels != null)
+            {
                 numAltLabels = altLabels.Count;
+            }
+
             if (numAltLabels > 0 && nalts != numAltLabels)
             {
                 g.tool.errMgr.GrammarError(ErrorType.RULE_WITH_TOO_FEW_ALT_LABELS,
-                                           g.fileName, idAST.Token, rule.GetRuleName());
+                    g.fileName, idAST.Token, rule.GetRuleName());
             }
         }
 
@@ -431,12 +447,15 @@ namespace Antlr4.Semantics
             string f = fullyQualifiedName;
             string fileName = Path.GetFileName(f);
             if (g.originalGrammar != null)
+            {
                 return; // don't warn about diff if this is implicit lexer
+            }
+
             if (!Utils.StripFileExtension(fileName).Equals(nameToken.Text) &&
-                 !fileName.Equals(Grammar.GRAMMAR_FROM_STRING_NAME))
+                !fileName.Equals(Grammar.GRAMMAR_FROM_STRING_NAME))
             {
                 g.tool.errMgr.GrammarError(ErrorType.FILE_AND_GRAMMAR_NAME_DIFFER,
-                                           fileName, nameToken, nameToken.Text, fileName);
+                    fileName, nameToken, nameToken.Text, fileName);
             }
         }
 
@@ -444,35 +463,38 @@ namespace Antlr4.Semantics
         {
             if (rulesNode.ChildCount == 0)
             {
-                GrammarAST root = (GrammarAST)rulesNode.Parent;
-                GrammarAST IDNode = (GrammarAST)root.GetChild(0);
+                GrammarAST root = (GrammarAST) rulesNode.Parent;
+                GrammarAST IDNode = (GrammarAST) root.GetChild(0);
                 g.tool.errMgr.GrammarError(ErrorType.NO_RULES, g.fileName,
-                        null, IDNode.Text, g);
+                    null, IDNode.Text, g);
             }
         }
 
         internal virtual void CheckNumPrequels(IList<GrammarAST> options,
-                              IList<GrammarAST> imports,
-                              IList<GrammarAST> tokens)
+            IList<GrammarAST> imports,
+            IList<GrammarAST> tokens)
         {
             IList<IToken> secondOptionTokens = new List<IToken>();
             if (options != null && options.Count > 1)
             {
                 secondOptionTokens.Add(options[1].Token);
             }
+
             if (imports != null && imports.Count > 1)
             {
                 secondOptionTokens.Add(imports[1].Token);
             }
+
             if (tokens != null && tokens.Count > 1)
             {
                 secondOptionTokens.Add(tokens[1].Token);
             }
+
             foreach (IToken t in secondOptionTokens)
             {
                 string fileName = t.InputStream.SourceName;
                 g.tool.errMgr.GrammarError(ErrorType.REPEATED_PREQUEL,
-                                           fileName, t);
+                    fileName, t);
             }
         }
 
@@ -483,26 +505,28 @@ namespace Antlr4.Semantics
             {
                 fileName = ruleID.InputStream.SourceName;
             }
-            if (g.IsLexer() && char.IsLower(ruleID.Text[0]))
+
+            if (g.IsLexer() && Char.IsLower(ruleID.Text[0]))
             {
                 g.tool.errMgr.GrammarError(ErrorType.PARSER_RULES_NOT_ALLOWED,
-                                           fileName, ruleID, ruleID.Text);
+                    fileName, ruleID, ruleID.Text);
             }
+
             if (g.IsParser() &&
                 Grammar.IsTokenName(ruleID.Text))
             {
                 g.tool.errMgr.GrammarError(ErrorType.LEXER_RULES_NOT_ALLOWED,
-                                           fileName, ruleID, ruleID.Text);
+                    fileName, ruleID, ruleID.Text);
             }
         }
 
         internal virtual void CheckInvalidRuleRef(IToken ruleID)
         {
             string fileName = ruleID.InputStream.SourceName;
-            if (g.IsLexer() && char.IsLower(ruleID.Text[0]))
+            if (g.IsLexer() && Char.IsLower(ruleID.Text[0]))
             {
                 g.tool.errMgr.GrammarError(ErrorType.PARSER_RULE_REF_IN_LEXER_RULE,
-                                           fileName, ruleID, ruleID.Text, currentRuleName);
+                    fileName, ruleID, ruleID.Text, currentRuleName);
             }
         }
 
@@ -512,9 +536,9 @@ namespace Antlr4.Semantics
             if (!Grammar.IsTokenName(tokenID.Text))
             {
                 g.tool.errMgr.GrammarError(ErrorType.TOKEN_NAMES_MUST_START_UPPER,
-                                           fileName,
-                                           tokenID,
-                                           tokenID.Text);
+                    fileName,
+                    tokenID,
+                    tokenID.Text);
             }
         }
 
@@ -549,16 +573,16 @@ namespace Antlr4.Semantics
         }
 
         /**
-         Make sure that action is last element in outer alt; here action,
-         a2, z, and zz are bad, but a3 is ok:
-         (RULE A (BLOCK (ALT {action} 'a')))
-         (RULE B (BLOCK (ALT (BLOCK (ALT {a2} 'x') (ALT 'y')) {a3})))
-         (RULE C (BLOCK (ALT 'd' {z}) (ALT 'e' {zz})))
+         * Make sure that action is last element in outer alt; here action,
+         * a2, z, and zz are bad, but a3 is ok:
+         * (RULE A (BLOCK (ALT {action} 'a')))
+         * (RULE B (BLOCK (ALT (BLOCK (ALT {a2} 'x') (ALT 'y')) {a3})))
+         * (RULE C (BLOCK (ALT 'd' {z}) (ALT 'e' {zz})))
          */
         protected virtual void CheckElementIsOuterMostInSingleAlt(GrammarAST tree)
         {
-            CommonTree alt = (CommonTree)tree.Parent;
-            CommonTree blk = (CommonTree)alt.Parent;
+            CommonTree alt = (CommonTree) tree.Parent;
+            CommonTree blk = (CommonTree) alt.Parent;
             bool outerMostAlt = blk.Parent.Type == RULE;
             ITree rule = tree.GetAncestor(RULE);
             string fileName = tree.Token.InputStream.SourceName;
@@ -566,10 +590,9 @@ namespace Antlr4.Semantics
             {
                 ErrorType e = ErrorType.LEXER_COMMAND_PLACEMENT_ISSUE;
                 g.tool.errMgr.GrammarError(e,
-                                           fileName,
-                                           tree.Token,
-                                           rule.GetChild(0).Text);
-
+                    fileName,
+                    tree.Token,
+                    rule.GetChild(0).Text);
             }
         }
 
@@ -577,32 +600,32 @@ namespace Antlr4.Semantics
         {
             switch (element.Type)
             {
-            // token atoms
-            case TOKEN_REF:
-            case STRING_LITERAL:
-            case RANGE:
-            // token sets
-            case SET:
-            case NOT:
-            // rule atoms
-            case RULE_REF:
-            case WILDCARD:
-                return;
+                // token atoms
+                case TOKEN_REF:
+                case STRING_LITERAL:
+                case RANGE:
+                // token sets
+                case SET:
+                case NOT:
+                // rule atoms
+                case RULE_REF:
+                case WILDCARD:
+                    return;
 
-            default:
-                string fileName = ID.Token.InputStream.SourceName;
-                g.tool.errMgr.GrammarError(ErrorType.LABEL_BLOCK_NOT_A_SET, fileName, ID.Token, ID.Text);
-                break;
+                default:
+                    string fileName = ID.Token.InputStream.SourceName;
+                    g.tool.errMgr.GrammarError(ErrorType.LABEL_BLOCK_NOT_A_SET, fileName, ID.Token, ID.Text);
+                    break;
             }
         }
 
         protected override void EnterLabeledLexerElement(GrammarAST tree)
         {
-            IToken label = ((GrammarAST)tree.GetChild(0)).Token;
+            IToken label = ((GrammarAST) tree.GetChild(0)).Token;
             g.tool.errMgr.GrammarError(ErrorType.V3_LEXER_LABEL,
-                                       g.fileName,
-                                       label,
-                                       label.Text);
+                g.fileName,
+                label,
+                label.Text);
         }
 
         protected override void EnterTerminal(GrammarAST tree)
@@ -614,59 +637,68 @@ namespace Antlr4.Semantics
             }
         }
 
-        /** Check option is appropriate for grammar, rule, subrule */
+        /**
+         * Check option is appropriate for grammar, rule, subrule
+         */
         internal virtual bool CheckOptions(GrammarAST parent,
-                             IToken optionID,
-                             GrammarAST valueAST)
+            IToken optionID,
+            GrammarAST valueAST)
         {
             bool ok = true;
             if (parent.Type == ANTLRParser.BLOCK)
             {
                 if (g.IsLexer() && !Grammar.LexerBlockOptions.Contains(optionID.Text))
-                { // block
+                {
+                    // block
                     g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                               g.fileName,
-                                               optionID,
-                                               optionID.Text);
+                        g.fileName,
+                        optionID,
+                        optionID.Text);
                     ok = false;
                 }
+
                 if (!g.IsLexer() && !Grammar.ParserBlockOptions.Contains(optionID.Text))
-                { // block
+                {
+                    // block
                     g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                               g.fileName,
-                                               optionID,
-                                               optionID.Text);
+                        g.fileName,
+                        optionID,
+                        optionID.Text);
                     ok = false;
                 }
             }
             else if (parent.Type == ANTLRParser.RULE)
             {
                 if (!Grammar.ruleOptions.Contains(optionID.Text))
-                { // rule
+                {
+                    // rule
                     g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                               g.fileName,
-                                               optionID,
-                                               optionID.Text);
+                        g.fileName,
+                        optionID,
+                        optionID.Text);
                     ok = false;
                 }
             }
             else if (parent.Type == ANTLRParser.GRAMMAR &&
-                      !LegalGrammarOption(optionID.Text))
-            { // grammar
+                     !LegalGrammarOption(optionID.Text))
+            {
+                // grammar
                 g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                           g.fileName,
-                                           optionID,
-                                           optionID.Text);
+                    g.fileName,
+                    optionID,
+                    optionID.Text);
                 ok = false;
             }
 
             return ok;
         }
 
-        /** Check option is appropriate for elem; parent of ID is ELEMENT_OPTIONS */
+        /**
+         * Check option is appropriate for elem; parent of ID is ELEMENT_OPTIONS
+         */
         internal virtual bool CheckElementOptions(GrammarASTWithOptions elem,
-                                    GrammarAST ID,
-                                    GrammarAST valueAST)
+            GrammarAST ID,
+            GrammarAST valueAST)
         {
             if (checkAssocElementOption && ID != null && "assoc".Equals(ID.Text))
             {
@@ -675,24 +707,27 @@ namespace Antlr4.Semantics
                     IToken optionID = ID.Token;
                     string fileName = optionID.InputStream.SourceName;
                     g.tool.errMgr.GrammarError(ErrorType.UNRECOGNIZED_ASSOC_OPTION,
-                                               fileName,
-                                               optionID,
-                                               currentRuleName);
+                        fileName,
+                        optionID,
+                        currentRuleName);
                 }
             }
 
             if (elem is RuleRefAST)
             {
-                return CheckRuleRefOptions((RuleRefAST)elem, ID, valueAST);
+                return CheckRuleRefOptions((RuleRefAST) elem, ID, valueAST);
             }
+
             if (elem is TerminalAST)
             {
-                return CheckTokenOptions((TerminalAST)elem, ID, valueAST);
+                return CheckTokenOptions((TerminalAST) elem, ID, valueAST);
             }
+
             if (elem.Type == ANTLRParser.ACTION)
             {
                 return false;
             }
+
             if (elem.Type == ANTLRParser.SEMPRED)
             {
                 IToken optionID = ID.Token;
@@ -700,12 +735,13 @@ namespace Antlr4.Semantics
                 if (valueAST != null && !Grammar.semPredOptions.Contains(optionID.Text))
                 {
                     g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                               fileName,
-                                               optionID,
-                                               optionID.Text);
+                        fileName,
+                        optionID,
+                        optionID.Text);
                     return false;
                 }
             }
+
             return false;
         }
 
@@ -717,11 +753,12 @@ namespace Antlr4.Semantics
             if (valueAST != null && !Grammar.ruleRefOptions.Contains(optionID.Text))
             {
                 g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                           fileName,
-                                           optionID,
-                                           optionID.Text);
+                    fileName,
+                    optionID,
+                    optionID.Text);
                 return false;
             }
+
             // TODO: extra checks depending on rule kind?
             return true;
         }
@@ -734,11 +771,12 @@ namespace Antlr4.Semantics
             if (valueAST != null && !Grammar.tokenOptions.Contains(optionID.Text))
             {
                 g.tool.errMgr.GrammarError(ErrorType.ILLEGAL_OPTION,
-                                           fileName,
-                                           optionID,
-                                           optionID.Text);
+                    fileName,
+                    optionID,
+                    optionID.Text);
                 return false;
             }
+
             // TODO: extra checks depending on terminal kind?
             return true;
         }
@@ -747,12 +785,12 @@ namespace Antlr4.Semantics
         {
             switch (g.Type)
             {
-            case ANTLRParser.LEXER:
-                return Grammar.lexerOptions.Contains(key);
-            case ANTLRParser.PARSER:
-                return Grammar.parserOptions.Contains(key);
-            default:
-                return Grammar.parserOptions.Contains(key);
+                case ANTLRParser.LEXER:
+                    return Grammar.lexerOptions.Contains(key);
+                case ANTLRParser.PARSER:
+                    return Grammar.parserOptions.Contains(key);
+                default:
+                    return Grammar.parserOptions.Contains(key);
             }
         }
 
@@ -760,23 +798,27 @@ namespace Antlr4.Semantics
         {
             Grammar @delegate = g.GetImportedGrammar(importID.Text);
             if (@delegate == null)
+            {
                 return;
+            }
+
             IList<int> validDelegators;
             if (validImportTypes.TryGetValue(@delegate.Type, out validDelegators) && validDelegators != null && !validDelegators.Contains(g.Type))
             {
                 g.tool.errMgr.GrammarError(ErrorType.INVALID_IMPORT,
-                                           g.fileName,
-                                           importID,
-                                           g, @delegate);
+                    g.fileName,
+                    importID,
+                    g, @delegate);
             }
+
             if (g.IsCombined() &&
-                 (@delegate.name.Equals(g.name + Grammar.GetGrammarTypeToFileNameSuffix(ANTLRParser.LEXER)) ||
-                  @delegate.name.Equals(g.name + Grammar.GetGrammarTypeToFileNameSuffix(ANTLRParser.PARSER))))
+                (@delegate.name.Equals(g.name + Grammar.GetGrammarTypeToFileNameSuffix(ANTLRParser.LEXER)) ||
+                 @delegate.name.Equals(g.name + Grammar.GetGrammarTypeToFileNameSuffix(ANTLRParser.PARSER))))
             {
                 g.tool.errMgr.GrammarError(ErrorType.IMPORT_NAME_CLASH,
-                                           g.fileName,
-                                           importID,
-                                           g, @delegate);
+                    g.fileName,
+                    importID,
+                    g, @delegate);
             }
         }
     }

@@ -2,40 +2,39 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
-using Encoding = System.Text.Encoding;
-using File = System.IO.File;
+using System.IO;
+using System.Text;
+
 
 namespace Antlr4.Runtime
 {
 #if COMPACT
-    using StreamReader = System.IO.StreamReader;
-#endif
+    #endif
 
     /// <summary>
-    /// This is an
-    /// <see cref="AntlrInputStream"/>
-    /// that is loaded from a file all at once
-    /// when you construct the object.
+    ///     This is an
+    ///     <see cref="AntlrInputStream" />
+    ///     that is loaded from a file all at once
+    ///     when you construct the object.
     /// </summary>
     public class AntlrFileStream : AntlrInputStream
     {
         protected internal string fileName;
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrFileStream([NotNull] string fileName)
             : this(fileName, null)
         {
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public AntlrFileStream([NotNull] string fileName, Encoding encoding)
         {
             this.fileName = fileName;
             Load(fileName, encoding);
         }
 
-        /// <exception cref="System.IO.IOException"/>
+        /// <exception cref="System.IO.IOException" />
         public virtual void Load([NotNull] string fileName, [NotNull] Encoding encoding)
         {
             if (fileName == null)
@@ -46,9 +45,13 @@ namespace Antlr4.Runtime
             string text;
 #if !COMPACT
             if (encoding != null)
+            {
                 text = File.ReadAllText(fileName, encoding);
+            }
             else
+            {
                 text = File.ReadAllText(fileName);
+            }
 #else
             if (encoding != null)
                 text = ReadAllText(fileName, encoding);
@@ -60,13 +63,7 @@ namespace Antlr4.Runtime
             n = data.Length;
         }
 
-        public override string SourceName
-        {
-            get
-            {
-                return fileName;
-            }
-        }
+        public override string SourceName => fileName;
 
 #if COMPACT
         private static string ReadAllText(string path)

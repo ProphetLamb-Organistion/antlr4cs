@@ -1,14 +1,19 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using System.Globalization;
-using Antlr4.Runtime.Atn;
+using System;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime
 {
-    [System.Serializable]
+    [Serializable]
     public class LexerNoViableAltException : RecognitionException
     {
         private const long serialVersionUID = -730999203913001726L;
@@ -16,51 +21,31 @@ namespace Antlr4.Runtime
         /// <summary>Matching attempted at what input index?</summary>
         private readonly int startIndex;
 
-        /// <summary>Which configurations did we try at input.index() that couldn't match input.LA(1)?</summary>
-        [Nullable]
-        private readonly ATNConfigSet deadEndConfigs;
-
-        public LexerNoViableAltException([Nullable] Lexer lexer, [NotNull] ICharStream input, int startIndex, [Nullable] ATNConfigSet deadEndConfigs)
+        public LexerNoViableAltException([AllowNull] Lexer lexer, [NotNull] ICharStream input, int startIndex, [AllowNull] ATNConfigSet deadEndConfigs)
             : base(lexer, input)
         {
             this.startIndex = startIndex;
-            this.deadEndConfigs = deadEndConfigs;
+            this.DeadEndConfigs = deadEndConfigs;
         }
 
-        public virtual int StartIndex
-        {
-            get
-            {
-                return startIndex;
-            }
-        }
+        public virtual int StartIndex => startIndex;
 
-        [Nullable]
-        public virtual ATNConfigSet DeadEndConfigs
-        {
-            get
-            {
-                return deadEndConfigs;
-            }
-        }
+        /// <summary>Which configurations did we try at input.index() that couldn't match input.LA(1)?</summary>
+        [MaybeNull]
+        public virtual ATNConfigSet DeadEndConfigs { get; }
 
-        public override IIntStream InputStream
-        {
-            get
-            {
-                return (ICharStream)base.InputStream;
-            }
-        }
+        public override IIntStream InputStream => (ICharStream) base.InputStream;
 
         public override string ToString()
         {
-            string symbol = string.Empty;
-            if (startIndex >= 0 && startIndex < ((ICharStream)InputStream).Size)
+            string symbol = String.Empty;
+            if (startIndex >= 0 && startIndex < ((ICharStream) InputStream).Size)
             {
-                symbol = ((ICharStream)InputStream).GetText(Interval.Of(startIndex, startIndex));
+                symbol = ((ICharStream) InputStream).GetText(Interval.Of(startIndex, startIndex));
                 symbol = Utils.EscapeWhitespace(symbol, false);
             }
-            return string.Format(CultureInfo.CurrentCulture, "{0}('{1}')", typeof(Antlr4.Runtime.LexerNoViableAltException).Name, symbol);
+
+            return $"{typeof(LexerNoViableAltException).Name}('{symbol}')";
         }
     }
 }

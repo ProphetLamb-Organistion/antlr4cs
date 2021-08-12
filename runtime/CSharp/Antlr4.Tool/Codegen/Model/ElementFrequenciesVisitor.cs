@@ -1,19 +1,17 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using Antlr4.Analysis;
+using Antlr4.Misc;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Runtime.CompilerServices;
-    using Antlr4.Analysis;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using ITreeNodeStream = Antlr.Runtime.Tree.ITreeNodeStream;
-    using Math = System.Math;
-
     public class ElementFrequenciesVisitor : GrammarTreeVisitor
     {
         /**
@@ -21,10 +19,11 @@ namespace Antlr4.Codegen.Model
          * to ensure that {@link #combineMin} doesn't merge an empty set (all zeros)
          * with the results of the first alternative.
          */
-        private static readonly FrequencySet<string> SENTINEL = new FrequencySet<string>();
+        private static readonly FrequencySet<string> SENTINEL = new();
+
+        internal readonly Stack<FrequencySet<string>> frequencies;
 
         internal readonly Grammar grammar;
-        internal readonly Stack<FrequencySet<string>> frequencies;
         private readonly Stack<FrequencySet<string>> minFrequencies;
 
         public ElementFrequenciesVisitor(Grammar grammar, ITreeNodeStream input)
@@ -54,7 +53,7 @@ namespace Antlr4.Codegen.Model
          * Generate a frequency set as the union of two input sets. If an
          * element is contained in both sets, the value for the output will be
          * the maximum of the two input values.
-         *
+         * 
          * @param a The first set.
          * @param b The second set.
          * @return The union of the two sets, with the maximum value chosen
@@ -81,7 +80,7 @@ namespace Antlr4.Codegen.Model
          * Generate a frequency set as the union of two input sets. If an
          * element is contained in both sets, the value for the output will be
          * the minimum of the two input values.
-         *
+         * 
          * @param a The first set.
          * @param b The second set. If this set is {@link #SENTINEL}, it is treated
          * as though no second set were provided.
@@ -110,7 +109,7 @@ namespace Antlr4.Codegen.Model
          * values clipped to a specified maximum value. If an element is
          * contained in both sets, the value for the output, prior to clipping,
          * will be the sum of the two input values.
-         *
+         * 
          * @param a The first set.
          * @param b The second set.
          * @param clip The maximum value to allow for any output.
@@ -119,10 +118,12 @@ namespace Antlr4.Codegen.Model
          */
         protected static FrequencySet<string> CombineAndClip(FrequencySet<string> a, FrequencySet<string> b, int clip)
         {
-            FrequencySet<string> result = new FrequencySet<string>();
+            var result = new FrequencySet<string>();
             foreach (KeyValuePair<string, StrongBox<int>> entry in a)
             {
-                for (int i = 0; i < entry.Value.Value; i++)
+                for (int i = 0;
+                    i < entry.Value.Value;
+                    i++)
                 {
                     result.Add(entry.Key);
                 }
@@ -130,7 +131,9 @@ namespace Antlr4.Codegen.Model
 
             foreach (KeyValuePair<string, StrongBox<int>> entry in b)
             {
-                for (int i = 0; i < entry.Value.Value; i++)
+                for (int i = 0;
+                    i < entry.Value.Value;
+                    i++)
                 {
                     result.Add(entry.Key);
                 }
@@ -154,8 +157,8 @@ namespace Antlr4.Codegen.Model
         {
             if (@ref is GrammarASTWithOptions)
             {
-                GrammarASTWithOptions grammarASTWithOptions = (GrammarASTWithOptions)@ref;
-                if (bool.Parse(grammarASTWithOptions.GetOptionString(LeftFactoringRuleTransformer.SUPPRESS_ACCESSOR) ?? "false"))
+                GrammarASTWithOptions grammarASTWithOptions = (GrammarASTWithOptions) @ref;
+                if (Boolean.Parse(grammarASTWithOptions.GetOptionString(LeftFactoringRuleTransformer.SUPPRESS_ACCESSOR) ?? "false"))
                 {
                     return;
                 }

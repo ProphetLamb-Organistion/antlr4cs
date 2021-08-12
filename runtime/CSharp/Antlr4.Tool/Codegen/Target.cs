@@ -1,41 +1,45 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Diagnostics;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Antlr4.Codegen.Model;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen
 {
-    using System.Diagnostics;
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using Path = System.IO.Path;
-    using TemplateMessage = Antlr4.StringTemplate.Misc.TemplateMessage;
-    using TokenConstants = Antlr4.Runtime.TokenConstants;
-    using Uri = System.Uri;
-
     /** */
     public abstract class AbstractTarget
     {
-        /** For pure strings of Java 16-bit Unicode char, how can we display
-         *  it in the target language as a literal.  Useful for dumping
-         *  predicates and such that may refer to chars that need to be escaped
-         *  when represented as strings.  Also, templates need to be escaped so
-         *  that the target language can hold them as a string.
-         *  <p>
-         *  I have defined (via the constructor) the set of typical escapes,
-         *  but your {@link Target} subclass is free to alter the translated chars
-         *  or add more definitions.  This is non-static so each target can have
-         *  a different set in memory at same time.</p>
+        protected readonly CodeGenerator gen;
+        private readonly string language;
+
+        /**
+         * For pure strings of Java 16-bit Unicode char, how can we display
+         * it in the target language as a literal.  Useful for dumping
+         * predicates and such that may refer to chars that need to be escaped
+         * when represented as strings.  Also, templates need to be escaped so
+         * that the target language can hold them as a string.
+         * <p>
+         *     I have defined (via the constructor) the set of typical escapes,
+         *     but your {@link Target} subclass is free to alter the translated chars
+         *     or add more definitions.  This is non-static so each target can have
+         *     a different set in memory at same time.
+         * </p>
          */
         protected string[] targetCharValueEscape = new string[255];
 
-        protected readonly CodeGenerator gen;
-        private readonly string language;
         private TemplateGroup templates;
 
         protected AbstractTarget(CodeGenerator gen, string language)
@@ -78,11 +82,12 @@ namespace Antlr4.Codegen
             GetCodeGenerator().Write(outputFileST, fileName);
         }
 
-        /** Get a meaningful name for a token type useful during code generation.
-         *  Literals without associated names are converted to the string equivalent
-         *  of their integer values. Used to generate x==ID and x==34 type comparisons
-         *  etc...  Essentially we are looking for the most obvious way to refer
-         *  to a token type in the generated code.
+        /**
+         * Get a meaningful name for a token type useful during code generation.
+         * Literals without associated names are converted to the string equivalent
+         * of their integer values. Used to generate x==ID and x==34 type comparisons
+         * etc...  Essentially we are looking for the most obvious way to refer
+         * to a token type in the generated code.
          */
         public virtual string GetTokenTypeAsTargetLabel(Grammar g, int ttype)
         {
@@ -99,31 +104,35 @@ namespace Antlr4.Codegen
         public virtual string[] GetTokenTypesAsTargetLabels(Grammar g, int[] ttypes)
         {
             string[] labels = new string[ttypes.Length];
-            for (int i = 0; i < ttypes.Length; i++)
+            for (int i = 0;
+                i < ttypes.Length;
+                i++)
             {
                 labels[i] = GetTokenTypeAsTargetLabel(g, ttypes[i]);
             }
+
             return labels;
         }
 
-        /** Given a random string of Java unicode chars, return a new string with
-         *  optionally appropriate quote characters for target language and possibly
-         *  with some escaped characters.  For example, if the incoming string has
-         *  actual newline characters, the output of this method would convert them
-         *  to the two char sequence \n for Java, C, C++, ...  The new string has
-         *  double-quotes around it as well.  Example String in memory:
-         *
-         *     a"[newlinechar]b'c[carriagereturnchar]d[tab]e\f
-         *
-         *  would be converted to the valid Java s:
-         *
-         *     "a\"\nb'c\rd\te\\f"
-         *
-         *  or
-         *
-         *     a\"\nb'c\rd\te\\f
-         *
-         *  depending on the quoted arg.
+        /**
+         * Given a random string of Java unicode chars, return a new string with
+         * optionally appropriate quote characters for target language and possibly
+         * with some escaped characters.  For example, if the incoming string has
+         * actual newline characters, the output of this method would convert them
+         * to the two char sequence \n for Java, C, C++, ...  The new string has
+         * double-quotes around it as well.  Example String in memory:
+         * 
+         * a"[newlinechar]b'c[carriagereturnchar]d[tab]e\f
+         * 
+         * would be converted to the valid Java s:
+         * 
+         * "a\"\nb'c\rd\te\\f"
+         * 
+         * or
+         * 
+         * a\"\nb'c\rd\te\\f
+         * 
+         * depending on the quoted arg.
          */
         public virtual string GetTargetStringLiteralFromString(string s, bool quoted)
         {
@@ -132,29 +141,34 @@ namespace Antlr4.Codegen
                 return null;
             }
 
-            StringBuilder buf = new StringBuilder();
+            StringBuilder buf = new();
             if (quoted)
             {
                 buf.Append('"');
             }
-            for (int i = 0; i < s.Length; i++)
+
+            for (int i = 0;
+                i < s.Length;
+                i++)
             {
                 int c = s[i];
                 if (c != '\'' && // don't escape single quotes in strings for java
-                     c < targetCharValueEscape.Length &&
-                     targetCharValueEscape[c] != null)
+                    c < targetCharValueEscape.Length &&
+                    targetCharValueEscape[c] != null)
                 {
                     buf.Append(targetCharValueEscape[c]);
                 }
                 else
                 {
-                    buf.Append((char)c);
+                    buf.Append((char) c);
                 }
             }
+
             if (quoted)
             {
                 buf.Append('"');
             }
+
             return buf.ToString();
         }
 
@@ -171,7 +185,9 @@ namespace Antlr4.Codegen
             CodeGenerator generator,
             string literal, bool addQuotes);
 
-        /** Assume 16-bit char */
+        /**
+         * Assume 16-bit char
+         */
         public abstract string EncodeIntAsCharEscape(int v);
 
         public virtual string GetLoopLabel(GrammarAST ast)
@@ -207,10 +223,11 @@ namespace Antlr4.Codegen
             return Utils.Capitalize(label) + GetTemplates().GetInstanceOf("RuleContextNameSuffix").Render();
         }
 
-        /** If we know which actual function, we can provide the actual ctx type.
-         *  This will contain implicit labels etc...  From outside, though, we
-         *  see only ParserRuleContext unless there are externally visible stuff
-         *  like args, locals, explicit labels, etc...
+        /**
+         * If we know which actual function, we can provide the actual ctx type.
+         * This will contain implicit labels etc...  From outside, though, we
+         * see only ParserRuleContext unless there are externally visible stuff
+         * like args, locals, explicit labels, etc...
          */
         public virtual string GetRuleFunctionContextStructName(RuleFunction function)
         {
@@ -270,15 +287,22 @@ namespace Antlr4.Codegen
             }
 
             if (GetCodeGenerator().g.GetRule(name) != null)
+            {
                 return name;
+            }
+
             int ttype = GetCodeGenerator().g.GetTokenType(name);
             if (ttype == TokenConstants.InvalidType)
+            {
                 return name;
+            }
+
             return GetTokenTypeAsTargetLabel(GetCodeGenerator().g, ttype);
         }
 
-        /** Generate TParser.java and TLexer.java from T.g4 if combined, else
-         *  just use T.java as output regardless of type.
+        /**
+         * Generate TParser.java and TLexer.java from T.g4 if combined, else
+         * just use T.java as output regardless of type.
          */
         public virtual string GetRecognizerFileName(bool header)
         {
@@ -287,8 +311,9 @@ namespace Antlr4.Codegen
             return recognizerName + extST.Render();
         }
 
-        /** A given grammar T, return the listener name such as
-         *  TListener.java, if we're using the Java target.
+        /**
+         * A given grammar T, return the listener name such as
+         * TListener.java, if we're using the Java target.
          */
         public virtual string GetListenerFileName(bool header)
         {
@@ -298,8 +323,9 @@ namespace Antlr4.Codegen
             return listenerName + extST.Render();
         }
 
-        /** A given grammar T, return the visitor name such as
-         *  TVisitor.java, if we're using the Java target.
+        /**
+         * A given grammar T, return the visitor name such as
+         * TVisitor.java, if we're using the Java target.
          */
         public virtual string GetVisitorFileName(bool header)
         {
@@ -309,8 +335,9 @@ namespace Antlr4.Codegen
             return listenerName + extST.Render();
         }
 
-        /** A given grammar T, return a blank listener implementation
-         *  such as TBaseListener.java, if we're using the Java target.
+        /**
+         * A given grammar T, return a blank listener implementation
+         * such as TBaseListener.java, if we're using the Java target.
          */
         public virtual string GetBaseListenerFileName(bool header)
         {
@@ -320,8 +347,9 @@ namespace Antlr4.Codegen
             return listenerName + extST.Render();
         }
 
-        /** A given grammar T, return a blank listener implementation
-         *  such as TBaseListener.java, if we're using the Java target.
+        /**
+         * A given grammar T, return a blank listener implementation
+         * such as TBaseListener.java, if we're using the Java target.
          */
         public virtual string GetBaseVisitorFileName(bool header)
         {
@@ -334,21 +362,22 @@ namespace Antlr4.Codegen
         /**
          * Gets the maximum number of 16-bit unsigned integers that can be encoded
          * in a single segment of the serialized ATN.
-         *
+         * 
          * @see SerializedATN#getSegments
-         *
+         * 
          * @return the serialized ATN segment limit
          */
         public virtual int GetSerializedATNSegmentLimit()
         {
-            return int.MaxValue;
+            return Int32.MaxValue;
         }
 
-        /** How many bits should be used to do inline token type tests? Java assumes
-         *  a 64-bit word for bitsets.  Must be a valid wordsize for your target like
-         *  8, 16, 32, 64, etc...
-         *
-         *  @since 4.5
+        /**
+         * How many bits should be used to do inline token type tests? Java assumes
+         * a 64-bit word for bitsets.  Must be a valid wordsize for your target like
+         * 8, 16, 32, 64, etc...
+         * 
+         * @since 4.5
          */
         public virtual int GetInlineTestSetWordSize()
         {
@@ -359,35 +388,29 @@ namespace Antlr4.Codegen
         {
             switch (idNode.Parent.Type)
             {
-            case ANTLRParser.ASSIGN:
-                switch (idNode.Parent.Parent.Type)
-                {
-                case ANTLRParser.ELEMENT_OPTIONS:
-                case ANTLRParser.OPTIONS:
-                    return false;
+                case ANTLRParser.ASSIGN:
+                    switch (idNode.Parent.Parent.Type)
+                    {
+                        case ANTLRParser.ELEMENT_OPTIONS:
+                        case ANTLRParser.OPTIONS:
+                            return false;
+                    }
 
-                default:
                     break;
-                }
 
-                break;
-
-            case ANTLRParser.AT:
-            case ANTLRParser.ELEMENT_OPTIONS:
-                return false;
-
-            case ANTLRParser.LEXER_ACTION_CALL:
-                if (idNode.ChildIndex == 0)
-                {
-                    // first child is the command name which is part of the ANTLR language
+                case ANTLRParser.AT:
+                case ANTLRParser.ELEMENT_OPTIONS:
                     return false;
-                }
 
-                // arguments to the command should be checked
-                break;
+                case ANTLRParser.LEXER_ACTION_CALL:
+                    if (idNode.ChildIndex == 0)
+                    {
+                        // first child is the command name which is part of the ANTLR language
+                        return false;
+                    }
 
-            default:
-                break;
+                    // arguments to the command should be checked
+                    break;
             }
 
             return VisibleGrammarSymbolCausesIssueInGeneratedCode(idNode);
@@ -398,7 +421,7 @@ namespace Antlr4.Codegen
         [return: NotNull]
         protected virtual TemplateGroup LoadTemplates()
         {
-            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.CodeBase).LocalPath;
+            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.Location).LocalPath;
             string baseDirectory = Path.GetDirectoryName(codeBaseLocation);
             TemplateGroup result = new TemplateGroupFile(
                 Path.Combine(
@@ -410,6 +433,39 @@ namespace Antlr4.Codegen
             result.Listener = new ErrorListener(this);
 
             return result;
+        }
+
+        /**
+         * @since 4.3
+         */
+        public virtual bool WantsBaseListener()
+        {
+            return true;
+        }
+
+        /**
+         * @since 4.3
+         */
+        public virtual bool WantsBaseVisitor()
+        {
+            return true;
+        }
+
+        /**
+         * @since 4.3
+         */
+        public virtual bool SupportsOverloadedMethods()
+        {
+            return true;
+        }
+
+        /**
+         * @since 4.6
+         */
+        public virtual bool NeedsHeader()
+        {
+            // Override in targets that need header files.
+            return false;
         }
 
         protected class ErrorListener : ITemplateErrorListener
@@ -445,37 +501,6 @@ namespace Antlr4.Codegen
             {
                 target.GetCodeGenerator().tool.errMgr.ToolError(ErrorType.STRING_TEMPLATE_WARNING, msg.Cause, msg.ToString());
             }
-        }
-
-        /**
-         * @since 4.3
-         */
-        public virtual bool WantsBaseListener()
-        {
-            return true;
-        }
-
-        /**
-         * @since 4.3
-         */
-        public virtual bool WantsBaseVisitor()
-        {
-            return true;
-        }
-
-        /**
-         * @since 4.3
-         */
-        public virtual bool SupportsOverloadedMethods()
-        {
-            return true;
-        }
-
-        /** @since 4.6 */
-        public virtual bool NeedsHeader()
-        {
-            // Override in targets that need header files.
-            return false;
         }
     }
 }

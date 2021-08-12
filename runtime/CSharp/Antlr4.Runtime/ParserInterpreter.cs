@@ -3,120 +3,121 @@
 
 using System;
 using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
 using System.Linq;
 using Antlr4.Runtime.Atn;
-using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime
 {
     /// <summary>
-    /// A parser simulator that mimics what ANTLR's generated
-    /// parser code does.
+    ///     A parser simulator that mimics what ANTLR's generated
+    ///     parser code does.
     /// </summary>
     /// <remarks>
-    /// A parser simulator that mimics what ANTLR's generated
-    /// parser code does. A ParserATNSimulator is used to make
-    /// predictions via adaptivePredict but this class moves a pointer through the
-    /// ATN to simulate parsing. ParserATNSimulator just
-    /// makes us efficient rather than having to backtrack, for example.
-    /// This properly creates parse trees even for left recursive rules.
-    /// We rely on the left recursive rule invocation and special predicate
-    /// transitions to make left recursive rules work.
-    /// See TestParserInterpreter for examples.
+    ///     A parser simulator that mimics what ANTLR's generated
+    ///     parser code does. A ParserATNSimulator is used to make
+    ///     predictions via adaptivePredict but this class moves a pointer through the
+    ///     ATN to simulate parsing. ParserATNSimulator just
+    ///     makes us efficient rather than having to backtrack, for example.
+    ///     This properly creates parse trees even for left recursive rules.
+    ///     We rely on the left recursive rule invocation and special predicate
+    ///     transitions to make left recursive rules work.
+    ///     See TestParserInterpreter for examples.
     /// </remarks>
     public class ParserInterpreter : Parser
     {
-        protected internal readonly string grammarFileName;
+        /// <summary>
+        ///     This stack corresponds to the _parentctx, _parentState pair of locals
+        ///     that would exist on call stack frames with a recursive descent parser;
+        ///     in the generated function for a left-recursive rule you'd see:
+        ///     private EContext e(int _p) throws RecognitionException {
+        ///     ParserRuleContext _parentctx = _ctx;    // Pair.a
+        ///     int _parentState = getState();          // Pair.b
+        ///     ...
+        /// </summary>
+        /// <remarks>
+        ///     This stack corresponds to the _parentctx, _parentState pair of locals
+        ///     that would exist on call stack frames with a recursive descent parser;
+        ///     in the generated function for a left-recursive rule you'd see:
+        ///     private EContext e(int _p) throws RecognitionException {
+        ///     ParserRuleContext _parentctx = _ctx;    // Pair.a
+        ///     int _parentState = getState();          // Pair.b
+        ///     ...
+        ///     }
+        ///     Those values are used to create new recursive rule invocation contexts
+        ///     associated with left operand of an alt like "expr '*' expr".
+        /// </remarks>
+        protected internal readonly Stack<Tuple<ParserRuleContext, int>> _parentContextStack = new();
 
         protected internal readonly ATN atn;
+        protected internal readonly string grammarFileName;
 
         /// <summary>
-        /// This identifies StarLoopEntryState's that begin the (...)
-        /// precedence loops of left recursive rules.
+        ///     This identifies StarLoopEntryState's that begin the (...)
+        ///     precedence loops of left recursive rules.
         /// </summary>
         protected internal readonly BitSet pushRecursionContextStates;
 
-        [Obsolete]
-        protected internal readonly string[] tokenNames;
-
         protected internal readonly string[] ruleNames;
 
-        [NotNull]
-        private readonly IVocabulary vocabulary;
+        [Obsolete] protected internal readonly string[] tokenNames;
+
+        [NotNull] private readonly IVocabulary vocabulary;
 
         /// <summary>
-        /// This stack corresponds to the _parentctx, _parentState pair of locals
-        /// that would exist on call stack frames with a recursive descent parser;
-        /// in the generated function for a left-recursive rule you'd see:
-        /// private EContext e(int _p) throws RecognitionException {
-        /// ParserRuleContext _parentctx = _ctx;    // Pair.a
-        /// int _parentState = getState();          // Pair.b
-        /// ...
+        ///     We need a map from (decision,inputIndex)-&gt;forced alt for computing ambiguous
+        ///     parse trees.
         /// </summary>
         /// <remarks>
-        /// This stack corresponds to the _parentctx, _parentState pair of locals
-        /// that would exist on call stack frames with a recursive descent parser;
-        /// in the generated function for a left-recursive rule you'd see:
-        /// private EContext e(int _p) throws RecognitionException {
-        /// ParserRuleContext _parentctx = _ctx;    // Pair.a
-        /// int _parentState = getState();          // Pair.b
-        /// ...
-        /// }
-        /// Those values are used to create new recursive rule invocation contexts
-        /// associated with left operand of an alt like "expr '*' expr".
-        /// </remarks>
-        protected internal readonly Stack<Tuple<ParserRuleContext, int>> _parentContextStack = new Stack<Tuple<ParserRuleContext, int>>();
-
-        /// <summary>
-        /// We need a map from (decision,inputIndex)-&gt;forced alt for computing ambiguous
-        /// parse trees.
-        /// </summary>
-        /// <remarks>
-        /// We need a map from (decision,inputIndex)-&gt;forced alt for computing ambiguous
-        /// parse trees. For now, we allow exactly one override.
+        ///     We need a map from (decision,inputIndex)-&gt;forced alt for computing ambiguous
+        ///     parse trees. For now, we allow exactly one override.
         /// </remarks>
         protected internal int overrideDecision = -1;
 
-        protected internal int overrideDecisionInputIndex = -1;
-
         protected internal int overrideDecisionAlt = -1;
 
-        protected internal bool overrideDecisionReached = false;
+        protected internal int overrideDecisionInputIndex = -1;
+
+        protected internal bool overrideDecisionReached;
 
         /// <summary>
-        /// What is the current context when we override a decisions?  This tells
-        /// us what the root of the parse tree is when using override
-        /// for an ambiguity/lookahead check.
+        ///     What is the current context when we override a decisions?  This tells
+        ///     us what the root of the parse tree is when using override
+        ///     for an ambiguity/lookahead check.
         /// </summary>
-        protected internal InterpreterRuleContext overrideDecisionRoot = null;
+        protected internal InterpreterRuleContext overrideDecisionRoot;
 
         protected internal InterpreterRuleContext rootContext;
 
         /// <summary>
-        /// A copy constructor that creates a new parser interpreter by reusing
-        /// the fields of a previous interpreter.
+        ///     A copy constructor that creates a new parser interpreter by reusing
+        ///     the fields of a previous interpreter.
         /// </summary>
         /// <param name="old">The interpreter to copy</param>
         /// <since>4.5</since>
-        public ParserInterpreter([NotNull] Antlr4.Runtime.ParserInterpreter old)
-            : base(((ITokenStream)old.InputStream))
+        public ParserInterpreter([NotNull] ParserInterpreter old)
+            : base((ITokenStream) old.InputStream)
         {
             // latch and only override once; error might trigger infinite loop
-            this.grammarFileName = old.grammarFileName;
-            this.atn = old.atn;
-            this.pushRecursionContextStates = old.pushRecursionContextStates;
+            grammarFileName = old.grammarFileName;
+            atn = old.atn;
+            pushRecursionContextStates = old.pushRecursionContextStates;
 #pragma warning disable 612 // Type or member is obsolete
-            this.tokenNames = old.tokenNames;
+            tokenNames = old.tokenNames;
 #pragma warning restore 612 // Type or member is obsolete
-            this.ruleNames = old.ruleNames;
-            this.vocabulary = old.vocabulary;
+            ruleNames = old.ruleNames;
+            vocabulary = old.vocabulary;
             Interpreter = new ParserATNSimulator(this, atn);
         }
 
-        [System.ObsoleteAttribute(@"Use ParserInterpreter(string, IVocabulary, System.Collections.Generic.ICollection{E}, Antlr4.Runtime.Atn.ATN, ITokenStream) instead.")]
+        [ObsoleteAttribute(@"Use ParserInterpreter(string, IVocabulary, System.Collections.Generic.ICollection{E}, Antlr4.Runtime.Atn.ATN, ITokenStream) instead.")]
         public ParserInterpreter(string grammarFileName, IEnumerable<string> tokenNames, IEnumerable<string> ruleNames, ATN atn, ITokenStream input)
-            : this(grammarFileName, Antlr4.Runtime.Vocabulary.FromTokenNames(tokenNames.ToArray()), ruleNames, atn, input)
+            : this(grammarFileName, Runtime.Vocabulary.FromTokenNames(tokenNames.ToArray()), ruleNames, atn, input)
         {
         }
 
@@ -126,8 +127,10 @@ namespace Antlr4.Runtime
             this.grammarFileName = grammarFileName;
             this.atn = atn;
 #pragma warning disable 612 // Type or member is obsolete
-            this.tokenNames = new string[atn.maxTokenType];
-            for (int i = 0; i < tokenNames.Length; i++)
+            tokenNames = new string[atn.maxTokenType];
+            for (int i = 0;
+                i < tokenNames.Length;
+                i++)
             {
                 tokenNames[i] = vocabulary.GetDisplayName(i);
             }
@@ -135,68 +138,58 @@ namespace Antlr4.Runtime
             this.ruleNames = ruleNames.ToArray();
             this.vocabulary = vocabulary;
             // identify the ATN states where pushNewRecursionContext() must be called
-            this.pushRecursionContextStates = new BitSet(atn.states.Count);
+            pushRecursionContextStates = new BitSet(atn.states.Count);
             foreach (ATNState state in atn.states)
             {
                 if (!(state is StarLoopEntryState))
                 {
                     continue;
                 }
-                if (((StarLoopEntryState)state).precedenceRuleDecision)
+
+                if (((StarLoopEntryState) state).precedenceRuleDecision)
                 {
-                    this.pushRecursionContextStates.Set(state.stateNumber);
+                    pushRecursionContextStates.Set(state.stateNumber);
                 }
             }
+
             // get atn simulator that knows how to do predictions
             Interpreter = new ParserATNSimulator(this, atn);
         }
+
+        public override ATN Atn => atn;
+
+        [Obsolete("Use IRecognizer.Vocabulary instead.")]
+        public override string[] TokenNames => tokenNames;
+
+        public override IVocabulary Vocabulary => vocabulary;
+
+        public override string[] RuleNames => ruleNames;
+
+        public override string GrammarFileName => grammarFileName;
+
+        protected internal virtual ATNState AtnState => atn.states[State];
+
+        public virtual InterpreterRuleContext OverrideDecisionRoot => overrideDecisionRoot;
+
+        /// <summary>
+        ///     Return the root of the parse, which can be useful if the parser
+        ///     bails out.
+        /// </summary>
+        /// <remarks>
+        ///     Return the root of the parse, which can be useful if the parser
+        ///     bails out. You still can access the top node. Note that,
+        ///     because of the way left recursive rules add children, it's possible
+        ///     that the root will not have any children if the start rule immediately
+        ///     called and left recursive rule that fails.
+        /// </remarks>
+        /// <since>4.5.1</since>
+        public virtual InterpreterRuleContext RootContext => rootContext;
 
         public override void Reset()
         {
             base.Reset();
             overrideDecisionReached = false;
             overrideDecisionRoot = null;
-        }
-
-        public override ATN Atn
-        {
-            get
-            {
-                return atn;
-            }
-        }
-
-        [Obsolete("Use IRecognizer.Vocabulary instead.")]
-        public override string[] TokenNames
-        {
-            get
-            {
-                return tokenNames;
-            }
-        }
-
-        public override IVocabulary Vocabulary
-        {
-            get
-            {
-                return vocabulary;
-            }
-        }
-
-        public override string[] RuleNames
-        {
-            get
-            {
-                return ruleNames;
-            }
-        }
-
-        public override string GrammarFileName
-        {
-            get
-            {
-                return grammarFileName;
-            }
         }
 
         /// <summary>Begin parsing at startRuleIndex</summary>
@@ -212,6 +205,7 @@ namespace Antlr4.Runtime
             {
                 EnterRule(rootContext, startRuleStartState.stateNumber, startRuleIndex);
             }
+
             while (true)
             {
                 ATNState p = AtnState;
@@ -229,12 +223,11 @@ namespace Antlr4.Runtime
                                 UnrollRecursionContexts(parentContext.Item1);
                                 return result;
                             }
-                            else
-                            {
-                                ExitRule();
-                                return rootContext;
-                            }
+
+                            ExitRule();
+                            return rootContext;
                         }
+
                         VisitRuleStopState(p);
                         break;
                     }
@@ -252,6 +245,7 @@ namespace Antlr4.Runtime
                             ErrorHandler.ReportError(this, e);
                             Recover(e);
                         }
+
                         break;
                     }
                 }
@@ -264,21 +258,14 @@ namespace Antlr4.Runtime
             base.EnterRecursionRule(localctx, state, ruleIndex, precedence);
         }
 
-        protected internal virtual ATNState AtnState
-        {
-            get
-            {
-                return atn.states[State];
-            }
-        }
-
         protected internal virtual void VisitState(ATNState p)
         {
             int predictedAlt = 1;
             if (p.NumberOfTransitions > 1)
             {
-                predictedAlt = VisitDecisionState((DecisionState)p);
+                predictedAlt = VisitDecisionState((DecisionState) p);
             }
+
             Transition transition = p.Transition(predictedAlt - 1);
             switch (transition.TransitionType)
             {
@@ -291,12 +278,13 @@ namespace Antlr4.Runtime
                         InterpreterRuleContext localctx = CreateInterpreterRuleContext(_parentContextStack.Peek().Item1, _parentContextStack.Peek().Item2, _ctx.RuleIndex);
                         PushNewRecursionContext(localctx, atn.ruleToStartState[p.ruleIndex].stateNumber, _ctx.RuleIndex);
                     }
+
                     break;
                 }
 
                 case TransitionType.Atom:
                 {
-                    Match(((AtomTransition)transition).label);
+                    Match(((AtomTransition) transition).label);
                     break;
                 }
 
@@ -308,6 +296,7 @@ namespace Antlr4.Runtime
                     {
                         RecoverInline();
                     }
+
                     MatchWildcard();
                     break;
                 }
@@ -320,43 +309,46 @@ namespace Antlr4.Runtime
 
                 case TransitionType.Rule:
                 {
-                    RuleStartState ruleStartState = (RuleStartState)transition.target;
+                    RuleStartState ruleStartState = (RuleStartState) transition.target;
                     int ruleIndex = ruleStartState.ruleIndex;
                     InterpreterRuleContext newctx = CreateInterpreterRuleContext(_ctx, p.stateNumber, ruleIndex);
                     if (ruleStartState.isPrecedenceRule)
                     {
-                        EnterRecursionRule(newctx, ruleStartState.stateNumber, ruleIndex, ((RuleTransition)transition).precedence);
+                        EnterRecursionRule(newctx, ruleStartState.stateNumber, ruleIndex, ((RuleTransition) transition).precedence);
                     }
                     else
                     {
                         EnterRule(newctx, transition.target.stateNumber, ruleIndex);
                     }
+
                     break;
                 }
 
                 case TransitionType.Predicate:
                 {
-                    PredicateTransition predicateTransition = (PredicateTransition)transition;
+                    PredicateTransition predicateTransition = (PredicateTransition) transition;
                     if (!Sempred(_ctx, predicateTransition.ruleIndex, predicateTransition.predIndex))
                     {
                         throw new FailedPredicateException(this);
                     }
+
                     break;
                 }
 
                 case TransitionType.Action:
                 {
-                    ActionTransition actionTransition = (ActionTransition)transition;
+                    ActionTransition actionTransition = (ActionTransition) transition;
                     Action(_ctx, actionTransition.ruleIndex, actionTransition.actionIndex);
                     break;
                 }
 
                 case TransitionType.Precedence:
                 {
-                    if (!Precpred(_ctx, ((PrecedencePredicateTransition)transition).precedence))
+                    if (!Precpred(_ctx, ((PrecedencePredicateTransition) transition).precedence))
                     {
-                        throw new FailedPredicateException(this, string.Format("precpred(_ctx, {0})", ((PrecedencePredicateTransition)transition).precedence));
+                        throw new FailedPredicateException(this, $"precpred(_ctx, {((PrecedencePredicateTransition) transition).precedence})");
                     }
+
                     break;
                 }
 
@@ -365,21 +357,21 @@ namespace Antlr4.Runtime
                     throw new NotSupportedException("Unrecognized ATN transition type.");
                 }
             }
+
             State = transition.target.stateNumber;
         }
 
         /// <summary>
-        /// Method visitDecisionState() is called when the interpreter reaches
-        /// a decision state (instance of DecisionState).
+        ///     Method visitDecisionState() is called when the interpreter reaches
+        ///     a decision state (instance of DecisionState).
         /// </summary>
         /// <remarks>
-        /// Method visitDecisionState() is called when the interpreter reaches
-        /// a decision state (instance of DecisionState). It gives an opportunity
-        /// for subclasses to track interesting things.
+        ///     Method visitDecisionState() is called when the interpreter reaches
+        ///     a decision state (instance of DecisionState). It gives an opportunity
+        ///     for subclasses to track interesting things.
         /// </remarks>
         protected internal virtual int VisitDecisionState(DecisionState p)
         {
-            int edge = 1;
             int predictedAlt;
             ErrorHandler.Sync(this);
             int decision = p.decision;
@@ -392,6 +384,7 @@ namespace Antlr4.Runtime
             {
                 predictedAlt = Interpreter.AdaptivePredict(_input, decision, _ctx);
             }
+
             return predictedAlt;
         }
 
@@ -415,47 +408,48 @@ namespace Antlr4.Runtime
             {
                 ExitRule();
             }
-            RuleTransition ruleTransition = (RuleTransition)atn.states[State].Transition(0);
+
+            RuleTransition ruleTransition = (RuleTransition) atn.states[State].Transition(0);
             State = ruleTransition.followState.stateNumber;
         }
 
         /// <summary>
-        /// Override this parser interpreters normal decision-making process
-        /// at a particular decision and input token index.
+        ///     Override this parser interpreters normal decision-making process
+        ///     at a particular decision and input token index.
         /// </summary>
         /// <remarks>
-        /// Override this parser interpreters normal decision-making process
-        /// at a particular decision and input token index. Instead of
-        /// allowing the adaptive prediction mechanism to choose the
-        /// first alternative within a block that leads to a successful parse,
-        /// force it to take the alternative, 1..n for n alternatives.
-        /// As an implementation limitation right now, you can only specify one
-        /// override. This is sufficient to allow construction of different
-        /// parse trees for ambiguous input. It means re-parsing the entire input
-        /// in general because you're never sure where an ambiguous sequence would
-        /// live in the various parse trees. For example, in one interpretation,
-        /// an ambiguous input sequence would be matched completely in expression
-        /// but in another it could match all the way back to the root.
-        /// s : e '!'? ;
-        /// e : ID
-        /// | ID '!'
-        /// ;
-        /// Here, x! can be matched as (s (e ID) !) or (s (e ID !)). In the first
-        /// case, the ambiguous sequence is fully contained only by the root.
-        /// In the second case, the ambiguous sequences fully contained within just
-        /// e, as in: (e ID !).
-        /// Rather than trying to optimize this and make
-        /// some intelligent decisions for optimization purposes, I settled on
-        /// just re-parsing the whole input and then using
-        /// {link Trees#getRootOfSubtreeEnclosingRegion} to find the minimal
-        /// subtree that contains the ambiguous sequence. I originally tried to
-        /// record the call stack at the point the parser detected and ambiguity but
-        /// left recursive rules create a parse tree stack that does not reflect
-        /// the actual call stack. That impedance mismatch was enough to make
-        /// it it challenging to restart the parser at a deeply nested rule
-        /// invocation.
-        /// Only parser interpreters can override decisions so as to avoid inserting
-        /// override checking code in the critical ALL(*) prediction execution path.
+        ///     Override this parser interpreters normal decision-making process
+        ///     at a particular decision and input token index. Instead of
+        ///     allowing the adaptive prediction mechanism to choose the
+        ///     first alternative within a block that leads to a successful parse,
+        ///     force it to take the alternative, 1..n for n alternatives.
+        ///     As an implementation limitation right now, you can only specify one
+        ///     override. This is sufficient to allow construction of different
+        ///     parse trees for ambiguous input. It means re-parsing the entire input
+        ///     in general because you're never sure where an ambiguous sequence would
+        ///     live in the various parse trees. For example, in one interpretation,
+        ///     an ambiguous input sequence would be matched completely in expression
+        ///     but in another it could match all the way back to the root.
+        ///     s : e '!'? ;
+        ///     e : ID
+        ///     | ID '!'
+        ///     ;
+        ///     Here, x! can be matched as (s (e ID) !) or (s (e ID !)). In the first
+        ///     case, the ambiguous sequence is fully contained only by the root.
+        ///     In the second case, the ambiguous sequences fully contained within just
+        ///     e, as in: (e ID !).
+        ///     Rather than trying to optimize this and make
+        ///     some intelligent decisions for optimization purposes, I settled on
+        ///     just re-parsing the whole input and then using
+        ///     {link Trees#getRootOfSubtreeEnclosingRegion} to find the minimal
+        ///     subtree that contains the ambiguous sequence. I originally tried to
+        ///     record the call stack at the point the parser detected and ambiguity but
+        ///     left recursive rules create a parse tree stack that does not reflect
+        ///     the actual call stack. That impedance mismatch was enough to make
+        ///     it it challenging to restart the parser at a deeply nested rule
+        ///     invocation.
+        ///     Only parser interpreters can override decisions so as to avoid inserting
+        ///     override checking code in the critical ALL(*) prediction execution path.
         /// </remarks>
         /// <since>4.5</since>
         public virtual void AddDecisionOverride(int decision, int tokenIndex, int forcedAlt)
@@ -465,22 +459,14 @@ namespace Antlr4.Runtime
             overrideDecisionAlt = forcedAlt;
         }
 
-        public virtual InterpreterRuleContext OverrideDecisionRoot
-        {
-            get
-            {
-                return overrideDecisionRoot;
-            }
-        }
-
         /// <summary>
-        /// Rely on the error handler for this parser but, if no tokens are consumed
-        /// to recover, add an error node.
+        ///     Rely on the error handler for this parser but, if no tokens are consumed
+        ///     to recover, add an error node.
         /// </summary>
         /// <remarks>
-        /// Rely on the error handler for this parser but, if no tokens are consumed
-        /// to recover, add an error node. Otherwise, nothing is seen in the parse
-        /// tree.
+        ///     Rely on the error handler for this parser but, if no tokens are consumed
+        ///     to recover, add an error node. Otherwise, nothing is seen in the parse
+        ///     tree.
         /// </remarks>
         protected internal virtual void Recover(RecognitionException e)
         {
@@ -491,11 +477,12 @@ namespace Antlr4.Runtime
                 // no input consumed, better add an error node
                 if (e is InputMismatchException)
                 {
-                    InputMismatchException ime = (InputMismatchException)e;
+                    InputMismatchException ime = (InputMismatchException) e;
                     IToken tok = e.OffendingToken;
                     int expectedTokenType = ime.GetExpectedTokens().MinElement;
                     // get any element
-                    IToken errToken = TokenFactory.Create(Tuple.Create(tok.TokenSource, tok.TokenSource.InputStream), expectedTokenType, tok.Text, TokenConstants.DefaultChannel, -1, -1, tok.Line, tok.Column);
+                    IToken errToken = TokenFactory.Create(Tuple.Create(tok.TokenSource, tok.TokenSource.InputStream), expectedTokenType, tok.Text, TokenConstants.DefaultChannel,
+                        -1, -1, tok.Line, tok.Column);
                     // invalid start/stop
                     _ctx.AddErrorNode(errToken);
                 }
@@ -503,7 +490,8 @@ namespace Antlr4.Runtime
                 {
                     // NoViableAlt
                     IToken tok = e.OffendingToken;
-                    IToken errToken = TokenFactory.Create(Tuple.Create(tok.TokenSource, tok.TokenSource.InputStream), TokenConstants.InvalidType, tok.Text, TokenConstants.DefaultChannel, -1, -1, tok.Line, tok.Column);
+                    IToken errToken = TokenFactory.Create(Tuple.Create(tok.TokenSource, tok.TokenSource.InputStream), TokenConstants.InvalidType, tok.Text,
+                        TokenConstants.DefaultChannel, -1, -1, tok.Line, tok.Column);
                     // invalid start/stop
                     _ctx.AddErrorNode(errToken);
                 }
@@ -513,26 +501,6 @@ namespace Antlr4.Runtime
         protected internal virtual IToken RecoverInline()
         {
             return _errHandler.RecoverInline(this);
-        }
-
-        /// <summary>
-        /// Return the root of the parse, which can be useful if the parser
-        /// bails out.
-        /// </summary>
-        /// <remarks>
-        /// Return the root of the parse, which can be useful if the parser
-        /// bails out. You still can access the top node. Note that,
-        /// because of the way left recursive rules add children, it's possible
-        /// that the root will not have any children if the start rule immediately
-        /// called and left recursive rule that fails.
-        /// </remarks>
-        /// <since>4.5.1</since>
-        public virtual InterpreterRuleContext RootContext
-        {
-            get
-            {
-                return rootContext;
-            }
         }
     }
 }

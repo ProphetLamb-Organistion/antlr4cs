@@ -1,9 +1,6 @@
 param (
 	[switch]$Debug,
-	[string]$VisualStudioVersion,
-	[switch]$NoClean,
 	[string]$Verbosity = "minimal",
-	[string]$Logger,
 	[string]$Java6Home,
 	[string]$MavenHome,
 	[string]$MavenRepo,
@@ -11,46 +8,9 @@ param (
 	[switch]$SkipKeyCheck,
 	[switch]$GenerateTests,
 	[switch]$NoValidate,
-	[switch]$UseMsBuild
+	[switch]$NoClean
 )
-
-# build the solution
-$SolutionPath = "..\Runtime\CSharp\Antlr4.sln"
-
-# make sure the script was run from the expected path
-if (!(Test-Path $SolutionPath)) {
-	Write-Error "The script was run from an invalid working directory."
-	exit 0x05
-}
-
-. .\version.ps1
-
-if ($Debug) {
-	$BuildConfig = 'Debug'
-} Else {
-	$BuildConfig = 'Release'
-}
-
-if ($AntlrVersion.Contains('-')) {
-	$KeyConfiguration = 'Dev'
-} Else {
-	$KeyConfiguration = 'Final'
-}
-
-if ($NoClean) {
-	$Target = 'build'
-} Else {
-	$Target = 'rebuild'
-}
-
-if (-not $MavenHome) {
-	$MavenHome = $env:M2_HOME
-}
-
-if (-not $UseMsBuild -and $env:DOTNET_CLI_TELEMETRY_OPTOUT -ne 1 ) {
-	Write-Warning "Friendly reminder to opt-out of telemetry reporting.`n No more reporting back to the mothership!"
-}
-
+# Ulitiy functions
 function GetJavaPath() {
 	$_javaKey = 'HKLM:\SOFTWARE\JavaSoft\Java Runtime Environment\1.6'
 	$_javaPath = 'JavaHome'
@@ -70,130 +30,86 @@ function GetJavaPath() {
 	exit 0x10
 }
 
-function GetNugetPath() {
-	$_nuget=Get-Command('nuget') -ErrorAction SilentlyContinue
-	if (-not $_nuget) {
-		$_nuget = $_nuget.Source
-	} else {
-		$_nuget = '..\runtime\CSharp\.nuget\NuGet.exe'
-		If (-not (Test-Path $_nuget)) {
-			If (-not (Test-Path '..\runtime\CSharp\.nuget')) {
-				mkdir '..\runtime\CSharp\.nuget'
-			}
-	
-			$_nugetSource = 'https://dist.nuget.org/win-x86-commandline/v5.7.0/nuget.exe'
-			Invoke-WebRequest $_nugetSource -OutFile $_nuget
-			if (-not $?) {
-				Write-Error 'Downloading the nuget package manager failed.'
-				$_nuget = $null
-			}
-		}
+function GetMavenPath() {
+	$_mavenPath = "$MavenHome\bin\mvn.cmd"
+	If (-not (Test-Path $_mavenPath)) {
+		$_mavenPath = "$MavenHome\bin\mvn.bat"
 	}
-	if ($null -ne $_nuget) {
-		return $_nuget
+	
+	If (Test-Path $_mavenPath) {
+		return $_mavenPath
 	}
 
-	Write-Error 'Unable to obtain the nuget package manager.'
-	exit 0x11
+	Write-Error "Couldn't locate Maven binary: $_mavenPath"
+	Set-Location $OriginalPath
+	exit 0x13
 }
 
-function GetMsBuildPath() {
-	if (-not [String]::IsNullOrEmpty($VisualStudioVersion)) {
-		$_visualStudio = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7')."$VisualStudioVersion"
-		return "$_visualStudio\MSBuild\$VisualStudioVersion\Bin\MSBuild.exe"
-	}
-	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0' -errorAction SilentlyContinue)
-	if ($null -ne $_key) { 
-		return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe")
-	}
-	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\2.0' -errorAction SilentlyContinue)
-	if ($null -ne $_key) { 
-		return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe")
-	}
+if ((Get-Variable DOTNET_CLI_TELEMETRY_OPTOUT -ErrorAction SilentlyContinue) -ne 1) {
+	Write-Warning "Disabling telemetry. No more reporting back to the mothership!"
+	Set-Variable DOTNET_CLI_TELEMETRY_OPTOUT 1
+}
 
-	Write-Error 'Unable to obtain the MSBuild tool.'
-	exit 0x12
+$SolutionPath = "..\Runtime\CSharp\Antlr4.sln"
+
+# make sure the script was run from the expected path
+if (-not (Test-Path $SolutionPath)) {
+	Write-Error "The script was run from an invalid working directory."
+	exit 0x05
+}
+
+$buildConfig = if ($Debug) { 'Debug' } else { 'Release' }
+
+if (-not $MavenHome) {
+	$MavenHome = $env:M2_HOME
 }
 
 $Java6Home=GetJavaPath
-$nuget=GetNugetPath
 
-# Build the Java library using Maven
+if (-not $MavenHome) {
+	$MavenHome = $env:M2_HOME
+}
+
+. .\version.ps1
+
 if (-not $SkipMaven) {
+	Write-Host "`n`n************************************`n* Build the Java library using Maven`n************************************`n"
 	$OriginalPath = $PWD
-
+	
 	Set-Location '..\tool'
-	$MavenPath = "$MavenHome\bin\mvn.cmd"
-	If (-not (Test-Path $MavenPath)) {
-		$MavenPath = "$MavenHome\bin\mvn.bat"
-	}
-
-	If (-not (Test-Path $MavenPath)) {
-		Write-Error "Couldn't locate Maven binary: $MavenPath"
-		Set-Location $OriginalPath
-		exit 0x13
-	}
-
-	If ($GenerateTests) {
-		$SkipTestsArg = 'false'
-	} Else {
-		$SkipTestsArg = 'true'
-	}
-
+	$mavenPath = GetMavenPath
+	
+	$SkipTestsArg = if ($GenerateTests) { 'false' } else { 'true' }
+	
 	If ($MavenRepo) {
 		$MavenRepoArg = "-Dmaven.repo.local=`"$MavenRepo`""
 	}
-
-	$MavenGoal = 'package'
-	&$MavenPath '-B' $MavenRepoArg "-DskipTests=$SkipTestsArg" '--errors' '-e' '-Dgpg.useagent=true' "-Djava6.home=$Java6Home" '-Psonatype-oss-release' $MavenGoal
+	
+	$mavenGoal = 'package'
+	&$mavenPath '-B' $MavenRepoArg "-DskipTests=$SkipTestsArg" '--errors' '-e' '-Dgpg.useagent=true' "-Djava6.home=$Java6Home" '-Psonatype-oss-release' $mavenGoal
 	if (-not $?) {
 		Write-Error 'Maven build of the C# Target custom Tool failed, aborting!'
 		Set-Location $OriginalPath
 		exit 0x20
 	}
-
+	
 	Set-Location $OriginalPath
 }
 
-# this is configured here for path checking, but also in the .props and .targets files
+Write-Host "`n`n**********************`n* Building the C# tool`n**********************n"
 [xml]$pom = Get-Content "..\tool\pom.xml"
-$CSharpToolVersionNodeInfo = Select-Xml "/mvn:project/mvn:version" -Namespace @{mvn='http://maven.apache.org/POM/4.0.0'} $pom
-$CSharpToolVersion = $CSharpToolVersionNodeInfo.Node.InnerText.trim()
+$csharpToolVersionNodeInfo = Select-Xml "/mvn:project/mvn:version" -Namespace @{mvn='http://maven.apache.org/POM/4.0.0'} $pom
+$csharpToolVersion = $csharpToolVersionNodeInfo.Node.InnerText.trim()
 
-# build the main project
-if ($UseMsBuild) {
-	$msbuild=GetMsBuildPath
-	$visualStudioVersionOption=if($null -eq $VisualStudioVersion) { $null } else { "/p:VisualStudioVersion=$VisualStudioVersion" }
-}
-
-if ($Logger) {
-	$LoggerArgument = "/logger:$Logger"
-}
-if ($UseMsBuild) {
-	&$nuget 'restore' $SolutionPath -Project2ProjectTimeOut 1200
-	if (-not $?) {
-		Write-Error 'Build failed, aborting!'
-		exit 0x22
-	}
-	&$msbuild '/nologo' '/m' '/nr:false' "/t=$Target" $LoggerArgument "/verbosity=$Verbosity" "/p:Configuration=$BuildConfig" $visualStudioVersionOption "/p:KeyConfiguration=$KeyConfiguration" $SolutionPath
-} else {
-	if (-not $NoClean) {
-		dotnet 'clean' '--nologo' $SolutionPath
-	}
-	dotnet 'build' '--nologo' "--verbosity $Verbosity" "--configuration=$BuildConfig" $SolutionPath
-}
+dotnet build --nologo --verbosity $Verbosity --configuration $buildConfig $SolutionPath
 if (-not $?) {
 	Write-Error 'Build failed, aborting!'
 	exit 0x22
 }
 
-if (-not (Test-Path 'nuget')) {
-	mkdir "nuget"
-}
-
-$JarPath = "..\tool\target\antlr4-csharp-$CSharpToolVersion-complete.jar"
-if (!(Test-Path $JarPath)) {
-	Write-Error "Couldn't locate the complete jar used for building C# parsers: $JarPath"
+$jarPath = "..\tool\target\antlr4-csharp-$csharpToolVersion-complete.jar"
+if (!(Test-Path $jarPath)) {
+	Write-Error "Couldn't locate the complete jar used for building C# parsers: $jarPath"
 	exit 0x14
 }
 
@@ -202,7 +118,7 @@ if (-not $SkipKeyCheck) {
 	. .\keys.ps1
 
 	foreach ($pair in $Keys.GetEnumerator()) {
-		$assembly = Resolve-FullPath -Path "..\runtime\CSharp\Antlr4.Runtime\bin\$BuildConfig\$($pair.Key)\Antlr4.Runtime.dll"
+		$assembly = Resolve-FullPath -Path "..\runtime\CSharp\Antlr4.Runtime\bin\$buildConfig\$($pair.Key)\Antlr4.Runtime.dll"
 
 		# Run the actual check in a separate process or the current process will keep the assembly file locked
 		powershell -Command ".\check-key.ps1 -Assembly '$assembly' -ExpectedKey '$($pair.Value)' -Build '$($pair.Key)'"
@@ -212,143 +128,81 @@ if (-not $SkipKeyCheck) {
 	}
 }
 
-$packages = @(
-	'Antlr4.CodeGenerator'
-	'Antlr4')
+$packages = 'Antlr4.CodeGenerator', 'Antlr4'
 
-ForEach ($package in $packages) {
-	If (-not (Test-Path ".\$package.nuspec")) {
-		Write-Error "Couldn't locate NuGet package specification: $package"
-		exit 0x15
-	}
-
-	&$nuget 'pack' ".\$package.nuspec" '-OutputDirectory' 'nuget' '-Prop' "Configuration=$BuildConfig" '-Version' "$AntlrVersion" '-Prop' "M2_REPO=$M2_REPO" '-Prop' "CSharpToolVersion=$CSharpToolVersion" '-Symbols'
+foreach ($package in $packages) {
+	dotnet pack ".\$package.nuspec" -o .\artifacts\ --no-build --verbosity $Verbosity --configuration $buildConfig /p:Version=$AntlrVersion /p:M2_REPO=$M2_REPO /p:CSharpToolVersion=$CSharpToolVersion --include-source --include-symbols
 	if (-not $?) {
 		exit 0x23
 	}
 }
 
-Write-Host "`n`n********************************************************`n* Validate code generation using the Java code generator`n********************************************************`n"
 if (-not $NoValidate) {
-	git 'clean' '-dxf' 'DotnetValidationJavaCodegen'
-	if ($UseMsBuild) {
-		&$nuget 'restore' 'DotnetValidationJavaCodegen'
-		&$msbuild '/nologo' '/m' '/nr:false' '/t:Rebuild' $LoggerArgument "/verbosity=$Verbosity" "/p:Configuration=$BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.sln'
-	} else {
-		dotnet 'clean' '--nologo' '.\DotnetValidationJavaCodegen\DotnetValidation.sln'
-		dotnet 'build' '--nologo' $LoggerArgument "--verbosity $Verbosity" "--configuration $BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.sln'
+	$frameworks= 'netstandard1.5', 'netstandard2.0', 'netstandard2.1', 'net45', 'net50'
+
+	Write-Host "`n`n********************************************************`n* Validate code generation using the Java code generator`n********************************************************`n"
+	if (-not $NoClean) {
+		git clean -dxf DotnetValidationJavaCodegen
+		dotnet clean --nologo --verbosity quite .\DotnetValidationJavaCodegen\DotnetValidation.sln
 	}
+	dotnet build --nologo --verbosity $Verbosity --configuration $buildConfig .\DotnetValidationJavaCodegen\DotnetValidation.sln
 	if (-not $?) {
 		Write-Error 'Build failed, aborting!'
 		exit 0x22
 	}
 
-	dotnet 'run'  '--framework netcoreapp1.5' "--configuration $BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.csproj'
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
+	foreach ($framework in $frameworks) {
+		dotnet run --nologo --no-build --configuration $buildConfig --framework $framework .\DotnetValidationJavaCodegen\DotnetValidation.sln
+		if (-not $?) {
+			Write-Error 'Validation failed!'
+			$validationFailed = $true
+		}
 	}
-
-	dotnet 'run' '--framework netcoreapp2.0' "--configuration $BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.csproj'
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
-	dotnet 'run' '--framework netcoreapp2.1' "--configuration $BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.csproj'
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
-	dotnet 'run' '--framework net45' "--configuration $BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.csproj'
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
-	dotnet 'run' '--framework net5.0' "--configuration $BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.csproj'
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
 	if ($validationFailed) {
 		Write-Error 'One or more Java codegen validations failed, aborting!'
 		exit 0x24
 	}
-}
 
-Write-Host "`n`n******************************************************`n* Validate code generation using the C# code generator`n******************************************************`n"
-if (-not $NoValidate) {
-	git 'clean' '-dxf' 'DotnetValidation'
-	if ($UseMsBuild) {
-		&$nuget 'restore' 'DotnetValidation'
-		&$msbuild '/nologo' '/m' '/nr:false' '/t:Rebuild' $LoggerArgument "/verbosity=$Verbosity" "/p:Configuration=$BuildConfig" '.\DotnetValidation\DotnetValidation.sln'
-	} else {
-		dotnet 'clean' '--nologo' '.\DotnetValidation\DotnetValidation.sln'
-		dotnet 'build' '--nologo' $LoggerArgument "--verbosity $Verbosity" "--configuration $BuildConfig" '.\DotnetValidation\DotnetValidation.sln'
+	Write-Host "`n`n******************************************************`n* Validate code generation using the C# code generator`n******************************************************`n"
+
+	if (-not $NoClean) {
+		git clean -dxf DotnetValidationSingleTarget
 	}
+	dotnet run --project .\DotnetValidationSingleTarget\DotnetValidation.csproj --framework netcoreapp1.1
+	if (-not $?) {
+		Write-Error 'Build failed, aborting!'
+		exit 0x24
+	}
+
+	if (-not $NoClean) {
+		git clean -dxf DotnetValidationSingleTarget
+		dotnet clean --nologo --verbosity quite .\DotnetValidationSingleTarget\DotnetValidation.sln
+	}
+	dotnet build --nologo --verbosity $Verbosity --configuration $buildConfig .\DotnetValidationSingleTarget\DotnetValidation.sln
+	if (-not $?) {
+		Write-Error 'Build failed, aborting!'
+		exit 0x24 
+	}
+
+	if (-not $NoClean) {
+		git clean -dxf DotnetValidation
+		dotnet clean --nologo --verbosity quite .\DotnetValidation\DotnetValidation.sln
+	}
+	dotnet build --nologo --verbosity $Verbosity --configuration $buildConfig .\DotnetValidation\DotnetValidation.sln
 	if (-not $?) {
 		Write-Error 'Build failed, aborting!'
 		exit 0x22
 	}
 
-	".\DotnetValidation\bin\$BuildConfig\netstandard1.5\DotnetValidation.exe"
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
+	foreach ($framework in $frameworks) {
+		dotnet run --nologo --no-build --configuration $buildConfig --framework $framework .\DotnetValidation\DotnetValidation.sln
+		if (-not $?) {
+			Write-Error 'Validation failed!'
+			$validationFailed = $true
+		}
 	}
-
-	".\DotnetValidation\bin\$BuildConfig\netstandard2.0\DotnetValidation.exe"
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
-	".\DotnetValidation\bin\$BuildConfig\netstandard2.1\DotnetValidation.exe"
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
-	".\DotnetValidation\bin\$BuildConfig\net45\DotnetValidation.exe"
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
-	".\DotnetValidation\bin\$BuildConfig\net50\DotnetValidation.exe"
-	if (-not $?) {
-		Write-Error 'Validation failed!'
-		$validationFailed = $true
-	}
-
 	if ($validationFailed) {
 		Write-Error 'One or more C# codegen validations failed, aborting!'
 		exit 0x24
-	}
-}
-
-# Validate code generation using the C# code generator (single target framework)
-if (-not $NoValidate) {
-	git 'clean' '-dxf' 'DotnetValidationSingleTarget'
-	dotnet 'run' '--project' '.\DotnetValidationSingleTarget\DotnetValidation.csproj' '--framework' 'netcoreapp1.1'
-	if (-not $?) {
-		Write-Error 'Build failed, aborting!'
-		exit 0x24
-	}
-
-	git 'clean' '-dxf' 'DotnetValidationSingleTarget'
-	if ($UseMsBuild) {
-		&$nuget 'restore' 'DotnetValidationSingleTarget'
-		&$msbuild '/nologo' '/m' '/nr:false' '/t:Rebuild' $LoggerArgument "/verbosity=$Verbosity" "/p:Configuration=$BuildConfig" '.\DotnetValidationSingleTarget\DotnetValidation.sln'
-	} else {
-		dotnet 'clean' '--nologo' '.\DotnetValidationSingleTarget\DotnetValidation.sln'
-		dotnet 'build' '--nologo' $LoggerArgument "--verbosity $Verbosity" "--configuration $BuildConfig" '.\DotnetValidationSingleTarget\DotnetValidation.sln'
-	}
-	if (-not $?) {
-		Write-Error 'Build failed, aborting!'
-		exit 0x24 
 	}
 }

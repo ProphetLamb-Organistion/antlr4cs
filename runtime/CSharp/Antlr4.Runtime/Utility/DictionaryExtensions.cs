@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-namespace Antlr4.Runtime.Sharpen
-{
-    using System.Collections.Generic;
+using System.Collections.Generic;
 
+namespace Antlr4.Runtime.Utility
+{
     internal static class DictionaryExtensions
     {
         public static TValue Get<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key)
@@ -12,7 +12,9 @@ namespace Antlr4.Runtime.Sharpen
         {
             TValue value;
             if (!dictionary.TryGetValue(key, out value))
+            {
                 return null;
+            }
 
             return value;
         }
@@ -22,7 +24,9 @@ namespace Antlr4.Runtime.Sharpen
         {
             TValue previous;
             if (!dictionary.TryGetValue(key, out previous))
+            {
                 previous = null;
+            }
 
             dictionary[key] = value;
             return previous;

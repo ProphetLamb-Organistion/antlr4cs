@@ -1,27 +1,26 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Codegen.Model.Chunk;
+using Antlr4.Tool;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using Antlr4.Codegen.Model.Chunk;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-
     /** */
     public class ParserFile : OutputFile
     {
-        public string genPackage; // from -package cmd-line
+        [ModelElement] public ActionChunk contextSuperClass;
+
         public string exportMacro; // from -DexportMacro cmd-line
         public bool genListener; // from -listener cmd-line
+        public string genPackage; // from -package cmd-line
         public bool genVisitor; // from -visitor cmd-line
-        [ModelElement]
-        public Parser parser;
-        [ModelElement]
-        public IDictionary<string, Action> namedActions;
-        [ModelElement]
-        public ActionChunk contextSuperClass;
         public string grammarName;
+
+        [ModelElement] public IDictionary<string, Action> namedActions;
+
+        [ModelElement] public Parser parser;
 
         public ParserFile(OutputModelFactory factory, string fileName)
             : base(factory, fileName)

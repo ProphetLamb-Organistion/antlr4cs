@@ -1,36 +1,44 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Antlr4.Misc;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Dfa;
+using Antlr4.Runtime.Utility;
+
+using Utils = Antlr4.Runtime.Utility.Utils;
+
 namespace Antlr4.Tool
 {
-    using System.Collections.Generic;
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.Misc;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Runtime.Dfa;
-    using Antlr4.StringTemplate;
-    using Path = System.IO.Path;
-    using Uri = System.Uri;
-
-    /** The DOT (part of graphviz) generation aspect. */
+    /**
+     * The DOT (part of graphviz) generation aspect.
+     */
     public class DOTGenerator
     {
         public static readonly bool STRIP_NONREDUCED_STATES = false;
 
-        protected string arrowhead = "normal";
-        protected string rankdir = "LR";
-
-        /** Library of output templates; use {@code &lt;attrname&gt;} format. */
+        /**
+         * Library of output templates; use {@code &lt;attrname&gt;} format.
+         */
         public static TemplateGroup stlib = new TemplateGroupFile(
             Path.Combine(
-                Path.GetDirectoryName(new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.CodeBase).LocalPath),
+                Path.GetDirectoryName(new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.Location).LocalPath),
                 Path.Combine("Tool", "Templates", "Dot", "graphs.stg")),
             Encoding.UTF8);
 
-        protected Grammar grammar;
+        protected string arrowhead = "normal";
 
-        /** This aspect is associated with a grammar */
+        protected Grammar grammar;
+        protected string rankdir = "LR";
+
+        /**
+         * This aspect is associated with a grammar
+         */
         public DOTGenerator(Grammar grammar)
         {
             this.grammar = grammar;
@@ -39,7 +47,9 @@ namespace Antlr4.Tool
         public virtual string GetDOT(DFA dfa, bool isLexer)
         {
             if (dfa.s0.Get() == null)
+            {
                 return null;
+            }
 
             Template dot = stlib.GetInstanceOf("dfa");
             dot.Add("name", "DFA" + dfa.decision);
@@ -51,7 +61,10 @@ namespace Antlr4.Tool
             foreach (DFAState d in dfa.states.Keys)
             {
                 if (!d.IsAcceptState)
+                {
                     continue;
+                }
+
                 Template st = stlib.GetInstanceOf("stopstate");
                 st.Add("name", "s" + d.stateNumber);
                 st.Add("label", GetStateLabel(d));
@@ -61,9 +74,15 @@ namespace Antlr4.Tool
             foreach (DFAState d in dfa.states.Keys)
             {
                 if (d.IsAcceptState)
+                {
                     continue;
-                if (d.stateNumber == int.MaxValue)
+                }
+
+                if (d.stateNumber == Int32.MaxValue)
+                {
                     continue;
+                }
+
                 Template st = stlib.GetInstanceOf("state");
                 st.Add("name", "s" + d.stateNumber);
                 st.Add("label", GetStateLabel(d));
@@ -77,15 +96,26 @@ namespace Antlr4.Tool
                 {
                     DFAState target = entry.Value;
                     if (target == null)
+                    {
                         continue;
-                    if (target.stateNumber == int.MaxValue)
+                    }
+
+                    if (target.stateNumber == Int32.MaxValue)
+                    {
                         continue;
+                    }
+
                     int ttype = entry.Key;
                     string label = ttype.ToString();
                     if (isLexer)
-                        label = "'" + GetEdgeLabel(((char)ttype).ToString()) + "'";
+                    {
+                        label = "'" + GetEdgeLabel(((char) ttype).ToString()) + "'";
+                    }
                     else if (grammar != null)
+                    {
                         label = grammar.GetTokenDisplayName(ttype);
+                    }
+
                     Template st = stlib.GetInstanceOf("edge");
                     st.Add("label", label);
                     st.Add("src", "s" + d.stateNumber);
@@ -102,25 +132,32 @@ namespace Antlr4.Tool
         protected virtual string GetStateLabel(DFAState s)
         {
             if (s == null)
+            {
                 return "null";
-            StringBuilder buf = new StringBuilder(250);
+            }
+
+            StringBuilder buf = new(250);
             buf.Append('s');
             buf.Append(s.stateNumber);
             if (s.IsAcceptState)
             {
                 buf.Append("=>").Append(s.Prediction);
             }
+
             if (grammar != null)
             {
-                Runtime.Sharpen.BitSet alts = s.configs.RepresentedAlternatives;
+                BitSet alts = s.configs.RepresentedAlternatives;
                 buf.Append("\\n");
                 IEnumerable<ATNConfig> configurations = s.configs;
-                for (int alt = alts.NextSetBit(0); alt >= 0; alt = alts.NextSetBit(alt + 1))
+                for (int alt = alts.NextSetBit(0);
+                    alt >= 0;
+                    alt = alts.NextSetBit(alt + 1))
                 {
                     if (alt > alts.NextSetBit(0))
                     {
                         buf.Append("\\n");
                     }
+
                     buf.Append("alt");
                     buf.Append(alt);
                     buf.Append(':');
@@ -130,26 +167,34 @@ namespace Antlr4.Tool
                     foreach (ATNConfig c in configurations)
                     {
                         if (c.Alt != alt)
+                        {
                             continue;
+                        }
+
                         configsInAlt.Add(c);
                     }
+
                     int n = 0;
-                    for (int cIndex = 0; cIndex < configsInAlt.Count; cIndex++)
+                    for (int cIndex = 0;
+                        cIndex < configsInAlt.Count;
+                        cIndex++)
                     {
                         ATNConfig c = configsInAlt[cIndex];
                         n++;
                         buf.Append(c.ToString(null, false));
-                        if ((cIndex + 1) < configsInAlt.Count)
+                        if (cIndex + 1 < configsInAlt.Count)
                         {
                             buf.Append(", ");
                         }
-                        if (n % 5 == 0 && (configsInAlt.Count - cIndex) > 3)
+
+                        if (n % 5 == 0 && configsInAlt.Count - cIndex > 3)
                         {
                             buf.Append("\\n");
                         }
                     }
                 }
             }
+
             string stateLabel = buf.ToString();
             return stateLabel;
         }
@@ -165,18 +210,24 @@ namespace Antlr4.Tool
             string[] names = new string[ruleNames.Count + 1];
             int i = 0;
             foreach (string s in ruleNames)
+            {
                 names[i++] = s;
+            }
+
             return GetDOT(startState, names, isLexer);
         }
 
-        /** Return a String containing a DOT description that, when displayed,
-         *  will show the incoming state machine visually.  All nodes reachable
-         *  from startState will be included.
+        /**
+         * Return a String containing a DOT description that, when displayed,
+         * will show the incoming state machine visually.  All nodes reachable
+         * from startState will be included.
          */
         public virtual string GetDOT(ATNState startState, string[] ruleNames, bool isLexer)
         {
             if (startState == null)
+            {
                 return null;
+            }
 
             // The output DOT graph for visualization
             ISet<ATNState> markedStates = new HashSet<ATNState>();
@@ -184,7 +235,7 @@ namespace Antlr4.Tool
             dot.Add("startState", startState.stateNumber);
             dot.Add("rankdir", rankdir);
 
-            Queue<ATNState> work = new Queue<ATNState>();
+            var work = new Queue<ATNState>();
 
             work.Enqueue(startState);
             while (work.Count > 0)
@@ -195,11 +246,14 @@ namespace Antlr4.Tool
                     work.Dequeue();
                     continue;
                 }
+
                 markedStates.Add(s);
 
                 // don't go past end of rule node to the follow states
                 if (s is RuleStopState)
+                {
                     continue;
+                }
 
                 // special case: if decision point, then line up the alt start states
                 // unless it's an end of block
@@ -217,20 +271,23 @@ namespace Antlr4.Tool
 
                 // make a DOT edge for each transition
                 Template edgeST;
-                for (int i = 0; i < s.NumberOfTransitions; i++)
+                for (int i = 0;
+                    i < s.NumberOfTransitions;
+                    i++)
                 {
                     Transition edge = s.Transition(i);
                     if (edge is RuleTransition)
                     {
-                        RuleTransition rr = ((RuleTransition)edge);
+                        RuleTransition rr = (RuleTransition) edge;
                         // don't jump to other rules, but display edge to follow node
                         edgeST = stlib.GetInstanceOf("edge");
 
                         string label = "<" + ruleNames[rr.ruleIndex];
-                        if (((RuleStartState)rr.target).isPrecedenceRule)
+                        if (((RuleStartState) rr.target).isPrecedenceRule)
                         {
                             label += "[" + rr.precedence + "]";
                         }
+
                         label += ">";
 
                         edgeST.Add("label", label);
@@ -241,6 +298,7 @@ namespace Antlr4.Tool
                         work.Enqueue(rr.followState);
                         continue;
                     }
+
                     if (edge is ActionTransition)
                     {
                         edgeST = stlib.GetInstanceOf("action-edge");
@@ -258,47 +316,66 @@ namespace Antlr4.Tool
                         bool loopback = false;
                         if (edge.target is PlusBlockStartState)
                         {
-                            loopback = s.Equals(((PlusBlockStartState)edge.target).loopBackState);
+                            loopback = s.Equals(((PlusBlockStartState) edge.target).loopBackState);
                         }
                         else if (edge.target is StarLoopEntryState)
                         {
-                            loopback = s.Equals(((StarLoopEntryState)edge.target).loopBackState);
+                            loopback = s.Equals(((StarLoopEntryState) edge.target).loopBackState);
                         }
+
                         edgeST.Add("loopback", loopback);
                     }
                     else if (edge is AtomTransition)
                     {
                         edgeST = stlib.GetInstanceOf("edge");
-                        AtomTransition atom = (AtomTransition)edge;
+                        AtomTransition atom = (AtomTransition) edge;
                         string label = atom.label.ToString();
                         if (isLexer)
-                            label = "'" + GetEdgeLabel(((char)atom.label).ToString()) + "'";
+                        {
+                            label = "'" + GetEdgeLabel(((char) atom.label).ToString()) + "'";
+                        }
                         else if (grammar != null)
+                        {
                             label = grammar.GetTokenDisplayName(atom.label);
+                        }
+
                         edgeST.Add("label", GetEdgeLabel(label));
                     }
                     else if (edge is SetTransition)
                     {
                         edgeST = stlib.GetInstanceOf("edge");
-                        SetTransition set = (SetTransition)edge;
+                        SetTransition set = (SetTransition) edge;
                         string label = set.Label.ToString();
                         if (isLexer)
+                        {
                             label = set.Label.ToString(true);
+                        }
                         else if (grammar != null)
+                        {
                             label = set.Label.ToString(grammar.GetVocabulary());
+                        }
+
                         if (edge is NotSetTransition)
+                        {
                             label = "~" + label;
+                        }
+
                         edgeST.Add("label", GetEdgeLabel(label));
                     }
                     else if (edge is RangeTransition)
                     {
                         edgeST = stlib.GetInstanceOf("edge");
-                        RangeTransition range = (RangeTransition)edge;
+                        RangeTransition range = (RangeTransition) edge;
                         string label = range.Label.ToString();
                         if (isLexer)
+                        {
                             label = range.ToString();
+                        }
                         else if (grammar != null)
+                        {
                             label = range.Label.ToString(grammar.GetVocabulary());
+                        }
+
                         edgeST.Add("label", GetEdgeLabel(label));
                     }
                     else
@@ -306,6 +383,7 @@ namespace Antlr4.Tool
                         edgeST = stlib.GetInstanceOf("edge");
                         edgeST.Add("label", GetEdgeLabel(edge.ToString()));
                     }
+
                     edgeST.Add("src", "s" + s.stateNumber);
                     edgeST.Add("target", "s" + edge.target.stateNumber);
                     edgeST.Add("arrowhead", arrowhead);
@@ -317,6 +395,7 @@ namespace Antlr4.Tool
                     {
                         edgeST.Add("transitionIndex", false);
                     }
+
                     dot.Add("edges", edgeST);
                     work.Enqueue(edge.target);
                 }
@@ -336,7 +415,10 @@ namespace Antlr4.Tool
             foreach (ATNState s in markedStates)
             {
                 if (!(s is RuleStopState))
+                {
                     continue;
+                }
+
                 Template st = stlib.GetInstanceOf("stopstate");
                 st.Add("name", "s" + s.stateNumber);
                 st.Add("label", GetStateLabel(s));
@@ -346,7 +428,10 @@ namespace Antlr4.Tool
             foreach (ATNState s in markedStates)
             {
                 if (s is RuleStopState)
+                {
                     continue;
+                }
+
                 Template st = stlib.GetInstanceOf("state");
                 st.Add("name", "s" + s.stateNumber);
                 st.Add("label", GetStateLabel(s));
@@ -450,8 +535,9 @@ namespace Antlr4.Tool
         //        }
         //    }
 
-        /** Fix edge strings so they print out in DOT properly;
-         *  generate any gated predicates on edge too.
+        /**
+         * Fix edge strings so they print out in DOT properly;
+         * generate any gated predicates on edge too.
          */
         protected virtual string GetEdgeLabel(string label)
         {
@@ -465,7 +551,10 @@ namespace Antlr4.Tool
         protected virtual string GetStateLabel(ATNState s)
         {
             if (s == null)
+            {
                 return "null";
+            }
+
             string stateLabel = "";
 
             if (s is BlockStartState)
@@ -488,9 +577,9 @@ namespace Antlr4.Tool
                 stateLabel += "*";
             }
 
-            if (s is DecisionState && ((DecisionState)s).decision >= 0)
+            if (s is DecisionState && ((DecisionState) s).decision >= 0)
             {
-                stateLabel = stateLabel + "\\nd=" + ((DecisionState)s).decision;
+                stateLabel = stateLabel + "\\nd=" + ((DecisionState) s).decision;
             }
 
             return stateLabel;

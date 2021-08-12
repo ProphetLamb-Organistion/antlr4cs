@@ -1,64 +1,71 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using Antlr4.Codegen.Model.Decl;
+using Antlr4.Misc;
+using Antlr4.Parse;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
+using Utils = Antlr4.Misc.Utils;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using Antlr.Runtime;
-    using Antlr.Runtime.Tree;
-    using Antlr4.Codegen.Model.Decl;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-    using Tuple = System.Tuple;
-
     /** */
     public class RuleFunction : OutputModelObject
     {
-        public string name;
-        public IList<string> modifiers;
-        public string ctxType;
-        public ICollection<string> ruleLabels;
-        public ICollection<string> tokenLabels;
-        public ATNState startState;
-        public int index;
-        public Rule rule;
-        public bool hasLookaheadBlock;
-        public string variantOf;
+        [ModelElement] public IDictionary<string, AltLabelStructDecl> altLabelCtxs;
 
-        [ModelElement]
-        public IList<SrcOp> code;
-        [ModelElement]
-        public OrderedHashSet<Decl.Decl> locals; // TODO: move into ctx?
-        [ModelElement]
-        public ICollection<AttributeDecl> args = null;
-        [ModelElement]
-        public StructDecl ruleCtx;
-        [ModelElement]
-        public IDictionary<string, AltLabelStructDecl> altLabelCtxs;
-        [ModelElement]
-        public IDictionary<string, Action> namedActions;
-        [ModelElement]
-        public Action finallyAction;
-        [ModelElement]
-        public IList<ExceptionClause> exceptions;
-        [ModelElement]
-        public IList<SrcOp> postamble;
+        [ModelElement] public ICollection<AttributeDecl> args;
+
+        [ModelElement] public IList<SrcOp> code;
+
+        public string ctxType;
+
+        [ModelElement] public IList<ExceptionClause> exceptions;
+
+        [ModelElement] public Action finallyAction;
+
+        public bool hasLookaheadBlock;
+        public int index;
+
+        [ModelElement] public OrderedHashSet<Decl.Decl> locals; // TODO: move into ctx?
+
+        public IList<string> modifiers;
+        public string name;
+
+        [ModelElement] public IDictionary<string, Action> namedActions;
+
+        [ModelElement] public IList<SrcOp> postamble;
+
+        public Rule rule;
+
+        [ModelElement] public StructDecl ruleCtx;
+
+        public ICollection<string> ruleLabels;
+        public ATNState startState;
+        public ICollection<string> tokenLabels;
+        public string variantOf;
 
         public RuleFunction(OutputModelFactory factory, Rule r)
             : base(factory)
         {
-            this.name = r.name;
-            this.rule = r;
+            name = r.name;
+            rule = r;
             if (r.modifiers != null && r.modifiers.Count > 0)
             {
-                this.modifiers = new List<string>();
+                modifiers = new List<string>();
                 foreach (GrammarAST t in r.modifiers)
+                {
                     modifiers.Add(t.Text);
+                }
             }
+
             modifiers = Utils.NodesToStrings(r.modifiers);
 
             index = r.index;
@@ -84,13 +91,16 @@ namespace Antlr4.Codegen.Model
                         {
                             args.Add(new AttributeDecl(factory, a));
                         }
+
                         ruleCtx.ctorAttrs = args;
                     }
                 }
+
                 if (r.retvals != null)
                 {
                     ruleCtx.AddDecls(r.retvals.attributes.Values);
                 }
+
                 if (r.locals != null)
                 {
                     ruleCtx.AddDecls(r.locals.attributes.Values);
@@ -100,7 +110,7 @@ namespace Antlr4.Codegen.Model
             {
                 if (r.args != null || r.retvals != null || r.locals != null)
                 {
-                    throw new System.NotSupportedException("customized fields are not yet supported for customized context objects");
+                    throw new NotSupportedException("customized fields are not yet supported for customized context objects");
                 }
             }
 
@@ -111,8 +121,8 @@ namespace Antlr4.Codegen.Model
                 exceptions = new List<ExceptionClause>();
                 foreach (GrammarAST e in r.exceptions)
                 {
-                    ActionAST catchArg = (ActionAST)e.GetChild(0);
-                    ActionAST catchAction = (ActionAST)e.GetChild(1);
+                    ActionAST catchArg = (ActionAST) e.GetChild(0);
+                    ActionAST catchAction = (ActionAST) e.GetChild(1);
                     exceptions.Add(new ExceptionClause(factory, catchArg, catchAction));
                 }
             }
@@ -129,10 +139,12 @@ namespace Antlr4.Codegen.Model
             {
                 try
                 {
-                    foreach (var altAst in rule.g.GetUnlabeledAlternatives(ast))
+                    foreach (AltAST altAst in rule.g.GetUnlabeledAlternatives(ast))
+                    {
                         unlabeledAlternatives.Add(altAst);
+                    }
 
-                    foreach (KeyValuePair<string, IList<System.Tuple<int, AltAST>>> entry in rule.g.GetLabeledAlternatives(ast))
+                    foreach (KeyValuePair<string, IList<Tuple<int, AltAST>>> entry in rule.g.GetLabeledAlternatives(ast))
                     {
                         IList<AltAST> list;
                         if (!labeledAlternatives.TryGetValue(entry.Key, out list))
@@ -141,7 +153,7 @@ namespace Antlr4.Codegen.Model
                             labeledAlternatives[entry.Key] = list;
                         }
 
-                        foreach (System.Tuple<int, AltAST> tuple in entry.Value)
+                        foreach (Tuple<int, AltAST> tuple in entry.Value)
                         {
                             list.Add(tuple.Item2);
                         }
@@ -170,7 +182,7 @@ namespace Antlr4.Codegen.Model
             {
                 foreach (KeyValuePair<string, IList<AltAST>> entry in labeledAlternatives)
                 {
-                    AltLabelStructDecl labelDecl = new AltLabelStructDecl(factory, rule, entry.Key);
+                    AltLabelStructDecl labelDecl = new(factory, rule, entry.Key);
                     altLabelCtxs[entry.Key] = labelDecl;
                     ISet<Decl.Decl> decls = GetDeclsForAllElements(entry.Value);
                     foreach (Decl.Decl decl in decls)
@@ -197,9 +209,10 @@ namespace Antlr4.Codegen.Model
             }
         }
 
-        /** for all alts, find which ref X or r needs List
-           Must see across alts.  If any alt needs X or r as list, then
-           define as list.
+        /**
+         * for all alts, find which ref X or r needs List
+         * Must see across alts.  If any alt needs X or r as list, then
+         * define as list.
          */
         public virtual ISet<Decl.Decl> GetDeclsForAllElements(IList<AltAST> altASTs)
         {
@@ -209,12 +222,14 @@ namespace Antlr4.Codegen.Model
             IList<GrammarAST> allRefs = new List<GrammarAST>();
             foreach (AltAST ast in altASTs)
             {
-                IntervalSet reftypes = new IntervalSet(ANTLRParser.RULE_REF, ANTLRParser.TOKEN_REF);
+                IntervalSet reftypes = new(ANTLRParser.RULE_REF, ANTLRParser.TOKEN_REF);
                 IList<GrammarAST> refs = ast.GetNodesWithType(reftypes);
-                foreach (var @ref in refs)
+                foreach (GrammarAST @ref in refs)
+                {
                     allRefs.Add(@ref);
+                }
 
-                System.Tuple<FrequencySet<string>, FrequencySet<string>> minAndAltFreq = GetElementFrequenciesForAlt(ast);
+                Tuple<FrequencySet<string>, FrequencySet<string>> minAndAltFreq = GetElementFrequenciesForAlt(ast);
                 FrequencySet<string> minFreq = minAndAltFreq.Item1;
                 FrequencySet<string> altFreq = minAndAltFreq.Item2;
                 foreach (GrammarAST t in refs)
@@ -224,10 +239,12 @@ namespace Antlr4.Codegen.Model
                     {
                         suppress.Add(refLabelName);
                     }
+
                     if (minFreq.GetCount(refLabelName) == 0)
                     {
                         optional.Add(refLabelName);
                     }
+
                     if (altFreq.GetCount(refLabelName) > 1)
                     {
                         needsList.Add(refLabelName);
@@ -245,9 +262,9 @@ namespace Antlr4.Codegen.Model
                 }
 
                 IList<Decl.Decl> d = GetDeclForAltElement(t,
-                                                    refLabelName,
-                                                    needsList.Contains(refLabelName),
-                                                    optional.Contains(refLabelName));
+                    refLabelName,
+                    needsList.Contains(refLabelName),
+                    optional.Contains(refLabelName));
                 decls.UnionWith(d);
             }
 
@@ -266,12 +283,14 @@ namespace Antlr4.Codegen.Model
             return labelName;
         }
 
-        /** Given list of X and r refs in alt, compute how many of each there are */
-        protected virtual System.Tuple<FrequencySet<string>, FrequencySet<string>> GetElementFrequenciesForAlt(AltAST ast)
+        /**
+         * Given list of X and r refs in alt, compute how many of each there are
+         */
+        protected virtual Tuple<FrequencySet<string>, FrequencySet<string>> GetElementFrequenciesForAlt(AltAST ast)
         {
             try
             {
-                ElementFrequenciesVisitor visitor = new ElementFrequenciesVisitor(rule.g, new CommonTreeNodeStream(new GrammarASTAdaptor(), ast));
+                ElementFrequenciesVisitor visitor = new(rule.g, new CommonTreeNodeStream(new GrammarASTAdaptor(), ast));
                 visitor.outerAlternative();
                 if (visitor.frequencies.Count != 1)
                 {
@@ -301,11 +320,14 @@ namespace Antlr4.Codegen.Model
             {
                 Rule rref = factory.GetGrammar().GetRule(t.Text);
                 string ctxName = factory.GetTarget()
-                                 .GetRuleFunctionContextStructName(rref);
+                    .GetRuleFunctionContextStructName(rref);
                 if (needList)
                 {
                     if (factory.GetTarget().SupportsOverloadedMethods())
+                    {
                         decls.Add(new ContextRuleListGetterDecl(factory, refLabelName, ctxName));
+                    }
+
                     decls.Add(new ContextRuleListIndexedGetterDecl(factory, refLabelName, ctxName));
                 }
                 else
@@ -318,7 +340,10 @@ namespace Antlr4.Codegen.Model
                 if (needList)
                 {
                     if (factory.GetTarget().SupportsOverloadedMethods())
+                    {
                         decls.Add(new ContextTokenListGetterDecl(factory, refLabelName));
+                    }
+
                     decls.Add(new ContextTokenListIndexedGetterDecl(factory, refLabelName));
                 }
                 else
@@ -326,19 +351,27 @@ namespace Antlr4.Codegen.Model
                     decls.Add(new ContextTokenGetterDecl(factory, refLabelName, optional));
                 }
             }
+
             return decls;
         }
 
-        /** Add local var decl */
+        /**
+         * Add local var decl
+         */
         public virtual void AddLocalDecl(Decl.Decl d)
         {
             if (locals == null)
+            {
                 locals = new OrderedHashSet<Decl.Decl>();
+            }
+
             locals.Add(d);
             d.isLocal = true;
         }
 
-        /** Add decl to struct ctx for rule or alt if labeled */
+        /**
+         * Add decl to struct ctx for rule or alt if labeled
+         */
         public virtual void AddContextDecl(string altLabel, Decl.Decl d)
         {
             CodeBlockForOuterMostAlt alt = d.GetOuterMostAltCodeBlock();
@@ -355,6 +388,7 @@ namespace Antlr4.Codegen.Model
                     return;
                 }
             }
+
             ruleCtx.AddDecl(d); // stick in overall rule's ctx
         }
     }

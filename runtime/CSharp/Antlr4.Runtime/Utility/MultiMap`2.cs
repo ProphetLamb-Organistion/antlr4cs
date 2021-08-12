@@ -3,11 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using Antlr4.Runtime.Sharpen;
 
-namespace Antlr4.Runtime.Misc
+namespace Antlr4.Runtime.Utility
 {
-    [System.Serializable]
+    [Serializable]
     public class MultiMap<K, V> : Dictionary<K, IList<V>>
     {
         private const long serialVersionUID = -4956746660057462312L;
@@ -20,6 +19,7 @@ namespace Antlr4.Runtime.Misc
                 elementsForKey = new List<V>();
                 this[key] = elementsForKey;
             }
+
             elementsForKey.Add(value);
         }
 

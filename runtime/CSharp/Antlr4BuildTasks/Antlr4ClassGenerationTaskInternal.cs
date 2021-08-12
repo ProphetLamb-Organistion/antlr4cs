@@ -1,145 +1,60 @@
 ﻿// Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+
 namespace Antlr4.Build.Tasks
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Linq;
-    using System.Reflection;
-    using System.Text.RegularExpressions;
 #if !NETSTANDARD
-    using RegistryKey = Microsoft.Win32.RegistryKey;
-    using RegistryHive = Microsoft.Win32.RegistryHive;
-    using RegistryView = Microsoft.Win32.RegistryView;
-#endif
-    using StringBuilder = System.Text.StringBuilder;
+            #endif
 
     internal class AntlrClassGenerationTaskInternal
     {
-        private List<string> _generatedCodeFiles = new List<string>();
-        private IList<string> _sourceCodeFiles = new List<string>();
-        private List<BuildMessage> _buildMessages = new List<BuildMessage>();
+        private readonly List<string> _generatedCodeFiles = new();
+        private readonly List<BuildMessage> _buildMessages = new();
 
-        public IList<string> GeneratedCodeFiles
-        {
-            get
-            {
-                return this._generatedCodeFiles;
-            }
-        }
+        public IList<string> GeneratedCodeFiles => _generatedCodeFiles;
 
-        public string ToolPath
-        {
-            get;
-            set;
-        }
+        public string ToolPath { get; set; }
 
-        public string TargetLanguage
-        {
-            get;
-            set;
-        }
+        public string TargetLanguage { get; set; }
 
-        public string TargetFrameworkVersion
-        {
-            get;
-            set;
-        }
+        public string TargetFrameworkVersion { get; set; }
 
-        public string OutputPath
-        {
-            get;
-            set;
-        }
+        public string OutputPath { get; set; }
 
-        public string Encoding
-        {
-            get;
-            set;
-        }
+        public string Encoding { get; set; }
 
-        public string TargetNamespace
-        {
-            get;
-            set;
-        }
+        public string TargetNamespace { get; set; }
 
-        public string[] LanguageSourceExtensions
-        {
-            get;
-            set;
-        }
+        public string[] LanguageSourceExtensions { get; set; }
 
-        public bool GenerateListener
-        {
-            get;
-            set;
-        }
+        public bool GenerateListener { get; set; }
 
-        public bool GenerateVisitor
-        {
-            get;
-            set;
-        }
+        public bool GenerateVisitor { get; set; }
 
-        public bool ForceAtn
-        {
-            get;
-            set;
-        }
+        public bool ForceAtn { get; set; }
 
-        public bool AbstractGrammar
-        {
-            get;
-            set;
-        }
+        public bool AbstractGrammar { get; set; }
 
-        public string JavaVendor
-        {
-            get;
-            set;
-        }
+        public string JavaVendor { get; set; }
 
-        public string JavaInstallation
-        {
-            get;
-            set;
-        }
+        public string JavaInstallation { get; set; }
 
-        public string JavaExecutable
-        {
-            get;
-            set;
-        }
+        public string JavaExecutable { get; set; }
 
-        public bool UseCSharpGenerator
-        {
-            get;
-            set;
-        }
+        public bool UseCSharpGenerator { get; set; }
 
-        public IList<string> SourceCodeFiles
-        {
-            get
-            {
-                return this._sourceCodeFiles;
-            }
-            set
-            {
-                this._sourceCodeFiles = value;
-            }
-        }
+        public IList<string> SourceCodeFiles { get; set; } = new List<string>();
 
-        public IList<BuildMessage> BuildMessages
-        {
-            get
-            {
-                return _buildMessages;
-            }
-        }
+        public IList<BuildMessage> BuildMessages => _buildMessages;
 
         private string JavaHome
         {
@@ -158,7 +73,9 @@ namespace Antlr4.Build.Tasks
 #endif
 
                 if (Directory.Exists(Environment.GetEnvironmentVariable("JAVA_HOME")))
+                {
                     return Environment.GetEnvironmentVariable("JAVA_HOME");
+                }
 
                 throw new NotSupportedException("Could not locate a Java installation.");
             }
@@ -203,7 +120,7 @@ namespace Antlr4.Build.Tasks
                 {
                     try
                     {
-                        if (!string.IsNullOrEmpty(JavaExecutable))
+                        if (!String.IsNullOrEmpty(JavaExecutable))
                         {
                             executable = JavaExecutable;
                         }
@@ -212,7 +129,9 @@ namespace Antlr4.Build.Tasks
                             string javaHome = JavaHome;
                             executable = Path.Combine(Path.Combine(javaHome, "bin"), "java.exe");
                             if (!File.Exists(executable))
+                            {
                                 executable = Path.Combine(Path.Combine(javaHome, "bin"), "java");
+                            }
                         }
                     }
                     catch (NotSupportedException)
@@ -237,7 +156,7 @@ namespace Antlr4.Build.Tasks
                     executable = Path.Combine(Path.Combine(Path.GetDirectoryName(ToolPath), framework), "Antlr4" + extension);
                 }
 
-                List<string> arguments = new List<string>();
+                var arguments = new List<string>();
 
                 if (!UseCSharpGenerator)
                 {
@@ -249,29 +168,41 @@ namespace Antlr4.Build.Tasks
                 arguments.Add("-o");
                 arguments.Add(OutputPath);
 
-                if (!string.IsNullOrEmpty(Encoding))
+                if (!String.IsNullOrEmpty(Encoding))
                 {
                     arguments.Add("-encoding");
                     arguments.Add(Encoding);
                 }
 
                 if (GenerateListener)
+                {
                     arguments.Add("-listener");
+                }
                 else
+                {
                     arguments.Add("-no-listener");
+                }
 
                 if (GenerateVisitor)
+                {
                     arguments.Add("-visitor");
+                }
                 else
+                {
                     arguments.Add("-no-visitor");
+                }
 
                 if (ForceAtn)
+                {
                     arguments.Add("-Xforce-atn");
+                }
 
                 if (AbstractGrammar)
+                {
                     arguments.Add("-Dabstract=true");
+                }
 
-                if (!string.IsNullOrEmpty(TargetLanguage))
+                if (!String.IsNullOrEmpty(TargetLanguage))
                 {
                     // Since the C# target currently produces the same code for all target framework versions, we can
                     // avoid bugs with support for newer frameworks by just passing CSharp as the language and allowing
@@ -279,7 +210,7 @@ namespace Antlr4.Build.Tasks
                     arguments.Add("-Dlanguage=" + TargetLanguage);
                 }
 
-                if (!string.IsNullOrEmpty(TargetNamespace))
+                if (!String.IsNullOrEmpty(TargetNamespace))
                 {
                     arguments.Add("-package");
                     arguments.Add(TargetNamespace);
@@ -290,11 +221,11 @@ namespace Antlr4.Build.Tasks
 #if NETSTANDARD
                 if (UseCSharpGenerator)
                 {
-                    var outWriter = new StringWriter();
-                    var errorWriter = new StringWriter();
+                    StringWriter outWriter = new StringWriter();
+                    StringWriter errorWriter = new StringWriter();
                     try
                     {
-                        var antlr = new AntlrTool(arguments.ToArray())
+                        AntlrTool antlr = new AntlrTool(arguments.ToArray())
                         {
                             ConsoleOut = outWriter,
                             ConsoleError = errorWriter
@@ -306,12 +237,12 @@ namespace Antlr4.Build.Tasks
                     }
                     finally
                     {
-                        foreach (var line in outWriter.ToString().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                        foreach (string line in outWriter.ToString().Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries))
                         {
                             HandleOutputDataReceived(line);
                         }
 
-                        foreach (var line in errorWriter.ToString().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                        foreach (string line in errorWriter.ToString().Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries))
                         {
                             HandleErrorDataReceived(line);
                         }
@@ -319,18 +250,18 @@ namespace Antlr4.Build.Tasks
                 }
 #endif
 
-                ProcessStartInfo startInfo = new ProcessStartInfo(executable, JoinArguments(arguments))
+                ProcessStartInfo startInfo = new(executable, JoinArguments(arguments))
                 {
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardInput = true,
                     RedirectStandardOutput = true,
-                    RedirectStandardError = true,
+                    RedirectStandardError = true
                 };
 
-                this.BuildMessages.Add(new BuildMessage(TraceLevel.Info, "Executing command: \"" + startInfo.FileName + "\" " + startInfo.Arguments, "", 0, 0));
+                BuildMessages.Add(new BuildMessage(TraceLevel.Info, "Executing command: \"" + startInfo.FileName + "\" " + startInfo.Arguments, "", 0, 0));
 
-                Process process = new Process();
+                Process process = new();
                 process.StartInfo = startInfo;
                 process.ErrorDataReceived += HandleErrorDataReceived;
                 process.OutputDataReceived += HandleOutputDataReceived;
@@ -356,7 +287,9 @@ namespace Antlr4.Build.Tasks
             catch (Exception e)
             {
                 if (e is TargetInvocationException && e.InnerException != null)
+                {
                     e = e.InnerException;
+                }
 
                 _buildMessages.Add(new BuildMessage(e.Message));
                 throw;
@@ -366,15 +299,19 @@ namespace Antlr4.Build.Tasks
         private static string JoinArguments(IEnumerable<string> arguments)
         {
             if (arguments == null)
+            {
                 throw new ArgumentNullException("arguments");
+            }
 
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new();
             foreach (string argument in arguments)
             {
                 if (builder.Length > 0)
+                {
                     builder.Append(' ');
+                }
 
-                if (argument.IndexOfAny(new[] { '"', ' ' }) < 0)
+                if (argument.IndexOfAny(new[] {'"', ' '}) < 0)
                 {
                     builder.Append(argument);
                     continue;
@@ -392,7 +329,7 @@ namespace Antlr4.Build.Tasks
             return builder.ToString();
         }
 
-        private static readonly Regex GeneratedFileMessageFormat = new Regex(@"^Generating file '(?<OUTPUT>.*?)' for grammar '(?<GRAMMAR>.*?)'$", RegexOptions.Compiled);
+        private static readonly Regex GeneratedFileMessageFormat = new(@"^Generating file '(?<OUTPUT>.*?)' for grammar '(?<GRAMMAR>.*?)'$", RegexOptions.Compiled);
 
         private void HandleErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
@@ -401,8 +338,10 @@ namespace Antlr4.Build.Tasks
 
         private void HandleErrorDataReceived(string data)
         {
-            if (string.IsNullOrEmpty(data))
+            if (String.IsNullOrEmpty(data))
+            {
                 return;
+            }
 
             try
             {
@@ -411,7 +350,9 @@ namespace Antlr4.Build.Tasks
             catch (Exception ex)
             {
                 if (Antlr4ClassGenerationTask.IsFatalException(ex))
+                {
                     throw;
+                }
 
                 _buildMessages.Add(new BuildMessage(ex.Message));
             }
@@ -424,8 +365,10 @@ namespace Antlr4.Build.Tasks
 
         private void HandleOutputDataReceived(string data)
         {
-            if (string.IsNullOrEmpty(data))
+            if (String.IsNullOrEmpty(data))
+            {
                 return;
+            }
 
             try
             {
@@ -438,12 +381,16 @@ namespace Antlr4.Build.Tasks
 
                 string fileName = match.Groups["OUTPUT"].Value;
                 if (LanguageSourceExtensions.Contains(Path.GetExtension(fileName), StringComparer.OrdinalIgnoreCase))
+                {
                     GeneratedCodeFiles.Add(match.Groups["OUTPUT"].Value);
+                }
             }
             catch (Exception ex)
             {
                 if (Antlr4ClassGenerationTask.IsFatalException(ex))
+                {
                     throw;
+                }
 
                 _buildMessages.Add(new BuildMessage(ex.Message));
             }

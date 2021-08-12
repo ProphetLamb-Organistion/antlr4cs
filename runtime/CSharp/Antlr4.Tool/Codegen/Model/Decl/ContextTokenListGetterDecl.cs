@@ -3,8 +3,9 @@
 
 namespace Antlr4.Codegen.Model.Decl
 {
-    /** {@code public List&lt;Token&gt; X() { }
-     *  public Token X(int i) { }}
+    /**
+     * {@code public List&lt;Token&gt; X() { }
+     * public Token X(int i) { }}
      */
     public class ContextTokenListGetterDecl : ContextGetterDecl
     {

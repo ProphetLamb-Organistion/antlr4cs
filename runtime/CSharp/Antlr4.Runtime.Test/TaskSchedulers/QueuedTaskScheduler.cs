@@ -1,5 +1,4 @@
 ﻿#if NET40PLUS
-
 //--------------------------------------------------------------------------
 // 
 //  Copyright (c) Microsoft Corporation.  All rights reserved. 

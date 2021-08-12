@@ -1,23 +1,15 @@
-﻿namespace Antlr4.Runtime
-{
-    using System;
+﻿using System;
 
-    [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+namespace Antlr4.Runtime
+{
+    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     public sealed class RuleVersionAttribute : Attribute
     {
-        private readonly int _version;
-
         public RuleVersionAttribute(int version)
         {
-            _version = version;
+            Version = version;
         }
 
-        public int Version
-        {
-            get
-            {
-                return _version;
-            }
-        }
+        public int Version { get; }
     }
 }

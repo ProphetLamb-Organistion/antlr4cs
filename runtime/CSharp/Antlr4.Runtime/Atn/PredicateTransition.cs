@@ -1,29 +1,33 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime.Atn
 {
     /// <summary>
-    /// TODO: this is old comment:
-    /// A tree of semantic predicates from the grammar AST if label==SEMPRED.
+    ///     TODO: this is old comment:
+    ///     A tree of semantic predicates from the grammar AST if label==SEMPRED.
     /// </summary>
     /// <remarks>
-    /// TODO: this is old comment:
-    /// A tree of semantic predicates from the grammar AST if label==SEMPRED.
-    /// In the ATN, labels will always be exactly one predicate, but the DFA
-    /// may have to combine a bunch of them as it collects predicates from
-    /// multiple ATN configurations into a single DFA state.
+    ///     TODO: this is old comment:
+    ///     A tree of semantic predicates from the grammar AST if label==SEMPRED.
+    ///     In the ATN, labels will always be exactly one predicate, but the DFA
+    ///     may have to combine a bunch of them as it collects predicates from
+    ///     multiple ATN configurations into a single DFA state.
     /// </remarks>
     public sealed class PredicateTransition : AbstractPredicateTransition
     {
-        public readonly int ruleIndex;
+        public readonly bool isCtxDependent;
 
         public readonly int predIndex;
-
-        public readonly bool isCtxDependent;
+        public readonly int ruleIndex;
 
         public PredicateTransition([NotNull] ATNState target, int ruleIndex, int predIndex, bool isCtxDependent)
             : base(target)
@@ -34,33 +38,15 @@ namespace Antlr4.Runtime.Atn
             this.isCtxDependent = isCtxDependent;
         }
 
-        public override Antlr4.Runtime.Atn.TransitionType TransitionType
-        {
-            get
-            {
-                return Antlr4.Runtime.Atn.TransitionType.Predicate;
-            }
-        }
+        public override TransitionType TransitionType => TransitionType.Predicate;
 
-        public override bool IsEpsilon
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool IsEpsilon => true;
+
+        public SemanticContext.Predicate Predicate => new SemanticContext.Predicate(ruleIndex, predIndex, isCtxDependent);
 
         public override bool Matches(int symbol, int minVocabSymbol, int maxVocabSymbol)
         {
             return false;
-        }
-
-        public SemanticContext.Predicate Predicate
-        {
-            get
-            {
-                return new SemanticContext.Predicate(ruleIndex, predIndex, isCtxDependent);
-            }
         }
 
         [return: NotNull]

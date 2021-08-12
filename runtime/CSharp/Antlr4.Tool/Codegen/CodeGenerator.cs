@@ -1,28 +1,23 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.IO;
+using System.Reflection;
+using Antlr4.Codegen.Model;
+using Antlr4.Misc;
+using Antlr4.Runtime;
+using Antlr4.Tool;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Reflection;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Misc;
-    using Antlr4.StringTemplate;
-    using Antlr4.Tool;
-    using Activator = System.Activator;
-    using ArgumentException = System.ArgumentException;
-    using InvalidCastException = System.InvalidCastException;
-    using IOException = System.IO.IOException;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using NotSupportedException = System.NotSupportedException;
-    using NullableAttribute = Antlr4.Runtime.Misc.NullableAttribute;
-    using Path = System.IO.Path;
-    using TextWriter = System.IO.TextWriter;
-    using TokenConstants = Antlr4.Runtime.TokenConstants;
-    using Type = System.Type;
-    using TypeLoadException = System.TypeLoadException;
-
     /** General controller for code gen.  Can instantiate sub generator(s).
      */
     public class CodeGenerator
@@ -30,20 +25,20 @@ namespace Antlr4.Codegen
         public static readonly string TEMPLATE_ROOT = Path.Combine("Tool", "Templates", "Codegen");
         public static readonly string VOCAB_FILE_EXTENSION = ".tokens";
         public static readonly string DEFAULT_LANGUAGE = "Java";
+
         public static readonly string vocabFilePattern =
             "<tokens.keys:{t | <t>=<tokens.(t)>\n}>" +
             "<literals.keys:{t | <t>=<literals.(t)>\n}>";
 
-        [NotNull]
-        public readonly Grammar g;
-        [NotNull]
-        public readonly AntlrTool tool;
-        [NotNull]
-        public readonly string language;
+        [NotNull] public readonly Grammar g;
 
-        private AbstractTarget target;
+        [NotNull] public readonly string language;
+
+        [NotNull] public readonly AntlrTool tool;
 
         public int lineWidth = 72;
+
+        private AbstractTarget target;
 
         public CodeGenerator([NotNull] Grammar g)
             : this(g.tool, g, g.GetOptionString("language"))
@@ -57,7 +52,7 @@ namespace Antlr4.Codegen
             this.language = language != null ? language : DEFAULT_LANGUAGE;
         }
 
-        [return: Nullable]
+        [return: MaybeNull]
         public virtual AbstractTarget GetTarget()
         {
             if (target == null)
@@ -68,7 +63,7 @@ namespace Antlr4.Codegen
             return target;
         }
 
-        [return: Nullable]
+        [return: MaybeNull]
         public virtual TemplateGroup GetTemplates()
         {
             AbstractTarget target = GetTarget();
@@ -86,31 +81,31 @@ namespace Antlr4.Codegen
             try
             {
                 Type c = Type.GetType(targetName, true);
-                target = (AbstractTarget)Activator.CreateInstance(c, this);
+                target = (AbstractTarget) Activator.CreateInstance(c, this);
             }
             catch (TargetInvocationException e)
             {
                 tool.errMgr.ToolError(ErrorType.CANNOT_CREATE_TARGET_GENERATOR,
-                             e,
-                             targetName);
+                    e,
+                    targetName);
             }
             catch (TypeLoadException e)
             {
                 tool.errMgr.ToolError(ErrorType.CANNOT_CREATE_TARGET_GENERATOR,
-                             e,
-                             targetName);
+                    e,
+                    targetName);
             }
             catch (ArgumentException e)
             {
                 tool.errMgr.ToolError(ErrorType.CANNOT_CREATE_TARGET_GENERATOR,
-                             e,
-                             targetName);
+                    e,
+                    targetName);
             }
             catch (InvalidCastException e)
             {
                 tool.errMgr.ToolError(ErrorType.CANNOT_CREATE_TARGET_GENERATOR,
-                             e,
-                             targetName);
+                    e,
+                    targetName);
             }
         }
 
@@ -119,7 +114,7 @@ namespace Antlr4.Codegen
         private OutputModelController CreateController()
         {
             OutputModelFactory factory = new ParserFactory(this);
-            OutputModelController controller = new OutputModelController(factory);
+            OutputModelController controller = new(factory);
             factory.SetController(controller);
             return controller;
         }
@@ -132,7 +127,7 @@ namespace Antlr4.Codegen
                 throw new NotSupportedException("Cannot generate code without a target.");
             }
 
-            OutputModelWalker walker = new OutputModelWalker(tool, target.GetTemplates());
+            OutputModelWalker walker = new(tool, target.GetTemplates());
             return walker.Walk(outputModel, header);
         }
 
@@ -140,6 +135,7 @@ namespace Antlr4.Codegen
         {
             return GenerateLexer(false);
         }
+
         public virtual Template GenerateLexer(bool header)
         {
             return Walk(CreateController().BuildLexerOutputModel(header), header);
@@ -149,6 +145,7 @@ namespace Antlr4.Codegen
         {
             return GenerateParser(false);
         }
+
         public virtual Template GenerateParser(bool header)
         {
             return Walk(CreateController().BuildParserOutputModel(header), header);
@@ -158,6 +155,7 @@ namespace Antlr4.Codegen
         {
             return GenerateListener(false);
         }
+
         public virtual Template GenerateListener(bool header)
         {
             return Walk(CreateController().BuildListenerOutputModel(header), header);
@@ -167,6 +165,7 @@ namespace Antlr4.Codegen
         {
             return GenerateBaseListener(false);
         }
+
         public virtual Template GenerateBaseListener(bool header)
         {
             return Walk(CreateController().BuildBaseListenerOutputModel(header), header);
@@ -176,6 +175,7 @@ namespace Antlr4.Codegen
         {
             return GenerateVisitor(false);
         }
+
         public virtual Template GenerateVisitor(bool header)
         {
             return Walk(CreateController().BuildVisitorOutputModel(header), header);
@@ -185,21 +185,23 @@ namespace Antlr4.Codegen
         {
             return GenerateBaseVisitor(false);
         }
+
         public virtual Template GenerateBaseVisitor(bool header)
         {
             return Walk(CreateController().BuildBaseVisitorOutputModel(header), header);
         }
 
-        /** Generate a token vocab file with all the token names/types.  For example:
-         *  ID=7
-         *  FOR=8
-         *  'for'=8
-         *
-         *  This is independent of the target language; used by ANTLR internally
+        /**
+         * Generate a token vocab file with all the token names/types.  For example:
+         * ID=7
+         * FOR=8
+         * 'for'=8
+         * 
+         * This is independent of the target language; used by ANTLR internally
          */
         internal virtual Template GetTokenVocabOutput()
         {
-            Template vocabFileST = new Template(vocabFilePattern);
+            Template vocabFileST = new(vocabFilePattern);
             IDictionary<string, int> tokens = new LinkedHashMap<string, int>();
             // make constants for the token names
             foreach (string t in g.tokenNameToTypeMap.Keys)
@@ -210,6 +212,7 @@ namespace Antlr4.Codegen
                     tokens[t] = tokenType;
                 }
             }
+
             vocabFileST.Add("tokens", tokens);
 
             // now dump the strings
@@ -318,8 +321,8 @@ namespace Antlr4.Codegen
             catch (IOException ioe)
             {
                 tool.errMgr.ToolError(ErrorType.CANNOT_WRITE_FILE,
-                                      ioe,
-                                      fileName);
+                    ioe,
+                    fileName);
             }
         }
 
@@ -327,18 +330,22 @@ namespace Antlr4.Codegen
         {
             return GetRecognizerFileName(false);
         }
+
         public virtual string GetListenerFileName()
         {
             return GetListenerFileName(false);
         }
+
         public virtual string GetVisitorFileName()
         {
             return GetVisitorFileName(false);
         }
+
         public virtual string GetBaseListenerFileName()
         {
             return GetBaseListenerFileName(false);
         }
+
         public virtual string GetBaseVisitorFileName()
         {
             return GetBaseVisitorFileName(false);
@@ -399,8 +406,9 @@ namespace Antlr4.Codegen
             return target.GetBaseVisitorFileName(header);
         }
 
-        /** What is the name of the vocab file generated for this grammar?
-         *  Returns null if no .tokens file should be generated.
+        /**
+         * What is the name of the vocab file generated for this grammar?
+         * Returns null if no .tokens file should be generated.
          */
         public virtual string GetVocabFileName()
         {
@@ -417,7 +425,10 @@ namespace Antlr4.Codegen
 
             Template extST = target.GetTemplates().GetInstanceOf("headerFileExtension");
             if (extST == null)
+            {
                 return null;
+            }
+
             string recognizerName = g.GetRecognizerName();
             return recognizerName + extST.Render();
         }

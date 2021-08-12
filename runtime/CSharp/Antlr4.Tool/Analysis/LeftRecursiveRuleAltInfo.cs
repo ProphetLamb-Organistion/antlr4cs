@@ -1,20 +1,20 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Analysis
 {
-    using Antlr4.Tool.Ast;
-
     public class LeftRecursiveRuleAltInfo
     {
-        public int altNum; // original alt index (from 1)
-        public string leftRecursiveRuleRefLabel;
-        public string altLabel;
         public readonly bool isListLabel;
-        public string altText;
         public AltAST altAST; // transformed ALT
-        public AltAST originalAltAST;
+        public string altLabel;
+        public int altNum; // original alt index (from 1)
+        public string altText;
+        public string leftRecursiveRuleRefLabel;
         public int nextPrec;
+        public AltAST originalAltAST;
 
         public LeftRecursiveRuleAltInfo(int altNum, string altText)
             : this(altNum, altText, null, null, false, null)
@@ -22,10 +22,10 @@ namespace Antlr4.Analysis
         }
 
         public LeftRecursiveRuleAltInfo(int altNum, string altText,
-                                        string leftRecursiveRuleRefLabel,
-                                        string altLabel,
-                                        bool isListLabel,
-                                        AltAST originalAltAST)
+            string leftRecursiveRuleRefLabel,
+            string altLabel,
+            bool isListLabel,
+            AltAST originalAltAST)
         {
             this.altNum = altNum;
             this.altText = altText;

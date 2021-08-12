@@ -1,16 +1,21 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Codegen.Model;
+using Antlr4.Codegen.Model.Decl;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Codegen.Model.Decl;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-
     public interface OutputModelFactory
     {
         Grammar GetGrammar();

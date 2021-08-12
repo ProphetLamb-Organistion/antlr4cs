@@ -1,16 +1,19 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+
 namespace Antlr4.Tool.Ast
 {
-    using System.Collections.Generic;
-    using Antlr.Runtime;
-    using ITree = Antlr.Runtime.Tree.ITree;
-
     public class BlockAST : GrammarASTWithOptions, RuleElementAST
     {
         // TODO: maybe I need a Subrule object like Rule so these options mov to that?
-        /** What are the default options for a subrule? */
+        /**
+         * What are the default options for a subrule?
+         */
         public static readonly IDictionary<string, string> defaultBlockOptions =
             new Dictionary<string, string>();
 

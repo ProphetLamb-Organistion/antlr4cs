@@ -1,10 +1,13 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using Antlr4.Runtime;
-using Antlr4.Runtime.Dfa;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Dfa;
 
 namespace Antlr4.Runtime.Atn
 {
@@ -13,11 +16,11 @@ namespace Antlr4.Runtime.Atn
     {
         public readonly ParserRuleContext outerContext;
 
+        public readonly ParserRuleContext remainingOuterContext;
+
         public readonly DFAState s0;
 
         public readonly bool useContext;
-
-        public readonly ParserRuleContext remainingOuterContext;
 
         public SimulatorState(ParserRuleContext outerContext, [NotNull] DFAState s0, bool useContext, ParserRuleContext remainingOuterContext)
         {

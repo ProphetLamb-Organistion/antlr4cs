@@ -4,7 +4,6 @@
 namespace Antlr4.Tool.Ast
 {
     /**
-     *
      * @author Sam Harwell
      */
     public interface QuantifierAST

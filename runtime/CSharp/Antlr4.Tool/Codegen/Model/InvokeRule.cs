@@ -1,37 +1,35 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Codegen.Model.Chunk;
+using Antlr4.Codegen.Model.Decl;
+using Antlr4.Misc;
+using Antlr4.Runtime.Atn;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using Antlr4.Codegen.Model.Chunk;
-    using Antlr4.Codegen.Model.Decl;
-    using Antlr4.Misc;
-    using Antlr4.Parse;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-
     /** */
     public class InvokeRule : RuleElement, LabeledOp
     {
-        public string name;
-        public OrderedHashSet<Decl.Decl> labels = new OrderedHashSet<Decl.Decl>(); // TODO: should need just 1
-        public string ctxName;
+        [ModelElement] public IList<ActionChunk> argExprsChunks;
 
-        [ModelElement]
-        public IList<ActionChunk> argExprsChunks;
+        public string ctxName;
+        public OrderedHashSet<Decl.Decl> labels = new(); // TODO: should need just 1
+        public string name;
 
         public InvokeRule(ParserFactory factory, GrammarAST ast, GrammarAST labelAST)
             : base(factory, ast)
         {
             if (ast.atnState != null)
             {
-                RuleTransition ruleTrans = (RuleTransition)ast.atnState.Transition(0);
+                RuleTransition ruleTrans = (RuleTransition) ast.atnState.Transition(0);
                 stateNumber = ast.atnState.stateNumber;
             }
 
-            this.name = ast.Text;
+            name = ast.Text;
             Rule r = factory.GetGrammar().GetRule(name);
             ctxName = factory.GetTarget().GetRuleFunctionContextStructName(r);
 
@@ -45,18 +43,18 @@ namespace Antlr4.Codegen.Model
                 {
                     factory.DefineImplicitLabel(ast, this);
                     string listLabel = factory.GetTarget().GetListLabel(label);
-                    RuleContextListDecl l = new RuleContextListDecl(factory, listLabel, ctxName);
+                    RuleContextListDecl l = new(factory, listLabel, ctxName);
                     rf.AddContextDecl(ast.GetAltLabel(), l);
                 }
                 else
                 {
-                    RuleContextDecl d = new RuleContextDecl(factory, label, ctxName);
+                    RuleContextDecl d = new(factory, label, ctxName);
                     labels.Add(d);
                     rf.AddContextDecl(ast.GetAltLabel(), d);
                 }
             }
 
-            ActionAST arg = (ActionAST)ast.GetFirstChildWithType(ANTLRParser.ARG_ACTION);
+            ActionAST arg = (ActionAST) ast.GetFirstChildWithType(ANTLRParser.ARG_ACTION);
             if (arg != null)
             {
                 argExprsChunks = ActionTranslator.TranslateAction(factory, rf, arg.Token, arg);
@@ -66,7 +64,7 @@ namespace Antlr4.Codegen.Model
             if (factory.GetCurrentOuterMostAlt().ruleRefsInActions.ContainsKey(ast.Text))
             {
                 string label = factory.GetTarget().GetImplicitRuleLabel(ast.Text);
-                RuleContextDecl d = new RuleContextDecl(factory, label, ctxName);
+                RuleContextDecl d = new(factory, label, ctxName);
                 labels.Add(d);
                 rf.AddContextDecl(ast.GetAltLabel(), d);
             }

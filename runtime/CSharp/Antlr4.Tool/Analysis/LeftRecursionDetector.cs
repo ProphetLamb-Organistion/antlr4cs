@@ -1,25 +1,28 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Misc;
+using Antlr4.Runtime.Atn;
+using Antlr4.Tool;
+
 namespace Antlr4.Analysis
 {
-    using System.Collections.Generic;
-    using Antlr4.Misc;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-
     public class LeftRecursionDetector
     {
-        internal Grammar g;
         public ATN atn;
+        internal Grammar g;
 
-        /** Holds a list of cycles (sets of rule names). */
+        /**
+         * Holds a list of cycles (sets of rule names).
+         */
         public IList<ISet<Rule>> listOfRecursiveCycles = new List<ISet<Rule>>();
 
-        /** Which rule start states have we visited while looking for a single
-         * 	left-recursion check?
+        /**
+         * Which rule start states have we visited while looking for a single
+         * left-recursion check?
          */
-        ISet<RuleStartState> rulesVisitedPerRuleCheck = new HashSet<RuleStartState>();
+        private readonly ISet<RuleStartState> rulesVisitedPerRuleCheck = new HashSet<RuleStartState>();
 
         public LeftRecursionDetector(Grammar g, ATN atn)
         {
@@ -39,6 +42,7 @@ namespace Antlr4.Analysis
 
                 Check(g.GetRule(start.ruleIndex), start, new HashSet<ATNState>());
             }
+
             //System.out.println("cycles="+listOfRecursiveCycles);
             if (listOfRecursiveCycles.Count > 0)
             {
@@ -46,47 +50,56 @@ namespace Antlr4.Analysis
             }
         }
 
-        /** From state s, look for any transition to a rule that is currently
-         *  being traced.  When tracing r, visitedPerRuleCheck has r
-         *  initially.  If you reach a rule stop state, return but notify the
-         *  invoking rule that the called rule is nullable. This implies that
-         *  invoking rule must look at follow transition for that invoking state.
-         *
-         *  The visitedStates tracks visited states within a single rule so
-         *  we can avoid epsilon-loop-induced infinite recursion here.  Keep
-         *  filling the cycles in listOfRecursiveCycles and also, as a
-         *  side-effect, set leftRecursiveRules.
+        /**
+         * From state s, look for any transition to a rule that is currently
+         * being traced.  When tracing r, visitedPerRuleCheck has r
+         * initially.  If you reach a rule stop state, return but notify the
+         * invoking rule that the called rule is nullable. This implies that
+         * invoking rule must look at follow transition for that invoking state.
+         * 
+         * The visitedStates tracks visited states within a single rule so
+         * we can avoid epsilon-loop-induced infinite recursion here.  Keep
+         * filling the cycles in listOfRecursiveCycles and also, as a
+         * side-effect, set leftRecursiveRules.
          */
         public virtual bool Check(Rule enclosingRule, ATNState s, ISet<ATNState> visitedStates)
         {
             if (s is RuleStopState)
+            {
                 return true;
+            }
+
             if (visitedStates.Contains(s))
+            {
                 return false;
+            }
+
             visitedStates.Add(s);
 
             //System.out.println("visit "+s);
             int n = s.NumberOfTransitions;
             bool stateReachesStopState = false;
-            for (int i = 0; i < n; i++)
+            for (int i = 0;
+                i < n;
+                i++)
             {
                 Transition t = s.Transition(i);
                 if (t is RuleTransition)
                 {
-                    RuleTransition rt = (RuleTransition)t;
+                    RuleTransition rt = (RuleTransition) t;
                     Rule r = g.GetRule(rt.ruleIndex);
-                    if (rulesVisitedPerRuleCheck.Contains((RuleStartState)t.target))
+                    if (rulesVisitedPerRuleCheck.Contains((RuleStartState) t.target))
                     {
                         AddRulesToCycle(enclosingRule, r);
                     }
                     else
                     {
                         // must visit if not already visited; mark target, pop when done
-                        rulesVisitedPerRuleCheck.Add((RuleStartState)t.target);
+                        rulesVisitedPerRuleCheck.Add((RuleStartState) t.target);
                         // send new visitedStates set per rule invocation
                         bool nullable = Check(r, t.target, new HashSet<ATNState>());
                         // we're back from visiting that rule
-                        rulesVisitedPerRuleCheck.Remove((RuleStartState)t.target);
+                        rulesVisitedPerRuleCheck.Remove((RuleStartState) t.target);
                         if (nullable)
                         {
                             stateReachesStopState |= Check(enclosingRule, rt.followState, visitedStates);
@@ -99,13 +112,15 @@ namespace Antlr4.Analysis
                 }
                 // else ignore non-epsilon transitions
             }
+
             return stateReachesStopState;
         }
 
-        /** enclosingRule calls targetRule. Find the cycle containing
-         *  the target and add the caller.  Find the cycle containing the caller
-         *  and add the target.  If no cycles contain either, then create a new
-         *  cycle.
+        /**
+         * enclosingRule calls targetRule. Find the cycle containing
+         * the target and add the caller.  Find the cycle containing the caller
+         * and add the target.  If no cycles contain either, then create a new
+         * cycle.
          */
         protected virtual void AddRulesToCycle(Rule enclosingRule, Rule targetRule)
         {
@@ -119,12 +134,14 @@ namespace Antlr4.Analysis
                     rulesInCycle.Add(enclosingRule);
                     foundCycle = true;
                 }
+
                 if (rulesInCycle.Contains(enclosingRule))
                 {
                     rulesInCycle.Add(targetRule);
                     foundCycle = true;
                 }
             }
+
             if (!foundCycle)
             {
                 ISet<Rule> cycle = new OrderedHashSet<Rule>();

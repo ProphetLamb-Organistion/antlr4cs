@@ -2,101 +2,113 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System;
-using System.Text;
+using System.Diagnostics;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.Text;
+
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime
 {
     public class UnbufferedTokenStream : ITokenStream
     {
-        protected internal ITokenSource tokenSource;
-
-        /// <summary>A moving window buffer of the data being scanned.</summary>
+        /// <summary>Absolute token index.</summary>
         /// <remarks>
-        /// A moving window buffer of the data being scanned. While there's a marker,
-        /// we keep adding to buffer. Otherwise,
-        /// <see cref="Consume()">consume()</see>
-        /// resets so
-        /// we start filling at index 0 again.
+        ///     Absolute token index. It's the index of the token about to be read via
+        ///     <c>LT(1)</c>
+        ///     . Goes from 0 to the number of tokens in the entire stream,
+        ///     although the stream size is unknown before the end is reached.
+        ///     <p>
+        ///         This value is used to set the token indexes if the stream provides tokens
+        ///         that implement
+        ///         <see cref="IWritableToken" />
+        ///         .
+        ///     </p>
         /// </remarks>
-        protected internal IToken[] tokens;
+        protected internal int currentTokenIndex;
 
         /// <summary>
-        /// The number of tokens currently in
-        /// <see cref="tokens">tokens</see>
-        /// .
-        /// <p>This is not the buffer capacity, that's
-        /// <c>tokens.length</c>
-        /// .</p>
-        /// </summary>
-        protected internal int n;
-
-        /// <summary>
-        /// 0..n-1 index into
-        /// <see cref="tokens">tokens</see>
-        /// of next token.
-        /// <p>The
-        /// <c>LT(1)</c>
-        /// token is
-        /// <c>tokens[p]</c>
-        /// . If
-        /// <c>p == n</c>
-        /// , we are
-        /// out of buffered tokens.</p>
-        /// </summary>
-        protected internal int p = 0;
-
-        /// <summary>
-        /// Count up with
-        /// <see cref="Mark()">mark()</see>
-        /// and down with
-        /// <see cref="Release(int)">release()</see>
-        /// . When we
-        /// <c>release()</c>
-        /// the last mark,
-        /// <c>numMarkers</c>
-        /// reaches 0 and we reset the buffer. Copy
-        /// <c>tokens[p]..tokens[n-1]</c>
-        /// to
-        /// <c>tokens[0]..tokens[(n-1)-p]</c>
-        /// .
-        /// </summary>
-        protected internal int numMarkers = 0;
-
-        /// <summary>
-        /// This is the
-        /// <c>LT(-1)</c>
-        /// token for the current position.
+        ///     This is the
+        ///     <c>LT(-1)</c>
+        ///     token for the current position.
         /// </summary>
         protected internal IToken lastToken;
 
         /// <summary>
-        /// When
-        /// <c>numMarkers &gt; 0</c>
-        /// , this is the
-        /// <c>LT(-1)</c>
-        /// token for the
-        /// first token in
-        /// <see cref="tokens"/>
-        /// . Otherwise, this is
-        /// <see langword="null"/>
-        /// .
+        ///     When
+        ///     <c>numMarkers &gt; 0</c>
+        ///     , this is the
+        ///     <c>LT(-1)</c>
+        ///     token for the
+        ///     first token in
+        ///     <see cref="tokens" />
+        ///     . Otherwise, this is
+        ///     <see langword="null" />
+        ///     .
         /// </summary>
         protected internal IToken lastTokenBufferStart;
 
-        /// <summary>Absolute token index.</summary>
+        /// <summary>
+        ///     The number of tokens currently in
+        ///     <see cref="tokens">tokens</see>
+        ///     .
+        ///     <p>
+        ///         This is not the buffer capacity, that's
+        ///         <c>tokens.length</c>
+        ///         .
+        ///     </p>
+        /// </summary>
+        protected internal int n;
+
+        /// <summary>
+        ///     Count up with
+        ///     <see cref="Mark()">mark()</see>
+        ///     and down with
+        ///     <see cref="Release(int)">release()</see>
+        ///     . When we
+        ///     <c>release()</c>
+        ///     the last mark,
+        ///     <c>numMarkers</c>
+        ///     reaches 0 and we reset the buffer. Copy
+        ///     <c>tokens[p]..tokens[n-1]</c>
+        ///     to
+        ///     <c>tokens[0]..tokens[(n-1)-p]</c>
+        ///     .
+        /// </summary>
+        protected internal int numMarkers;
+
+        /// <summary>
+        ///     0..n-1 index into
+        ///     <see cref="tokens">tokens</see>
+        ///     of next token.
+        ///     <p>
+        ///         The
+        ///         <c>LT(1)</c>
+        ///         token is
+        ///         <c>tokens[p]</c>
+        ///         . If
+        ///         <c>p == n</c>
+        ///         , we are
+        ///         out of buffered tokens.
+        ///     </p>
+        /// </summary>
+        protected internal int p;
+
+        /// <summary>A moving window buffer of the data being scanned.</summary>
         /// <remarks>
-        /// Absolute token index. It's the index of the token about to be read via
-        /// <c>LT(1)</c>
-        /// . Goes from 0 to the number of tokens in the entire stream,
-        /// although the stream size is unknown before the end is reached.
-        /// <p>This value is used to set the token indexes if the stream provides tokens
-        /// that implement
-        /// <see cref="IWritableToken"/>
-        /// .</p>
+        ///     A moving window buffer of the data being scanned. While there's a marker,
+        ///     we keep adding to buffer. Otherwise,
+        ///     <see cref="Consume()">consume()</see>
+        ///     resets so
+        ///     we start filling at index 0 again.
         /// </remarks>
-        protected internal int currentTokenIndex = 0;
+        protected internal IToken[] tokens;
+
+        protected internal ITokenSource tokenSource;
 
         public UnbufferedTokenStream(ITokenSource tokenSource)
             : this(tokenSource, 256)
@@ -106,7 +118,7 @@ namespace Antlr4.Runtime
         public UnbufferedTokenStream(ITokenSource tokenSource, int bufferSize)
         {
             this.tokenSource = tokenSource;
-            this.tokens = new IToken[bufferSize];
+            tokens = new IToken[bufferSize];
             n = 0;
             Fill(1);
         }
@@ -119,6 +131,7 @@ namespace Antlr4.Runtime
             {
                 throw new ArgumentOutOfRangeException("get(" + i + ") outside buffer: " + bufferStartIndex + ".." + (bufferStartIndex + n));
             }
+
             return tokens[i - bufferStartIndex];
         }
 
@@ -128,17 +141,20 @@ namespace Antlr4.Runtime
             {
                 return lastToken;
             }
+
             Sync(i);
             int index = p + i - 1;
             if (index < 0)
             {
                 throw new ArgumentOutOfRangeException("LT(" + i + ") gives negative index");
             }
+
             if (index >= n)
             {
-                System.Diagnostics.Debug.Assert(n > 0 && tokens[n - 1].Type == TokenConstants.Eof);
+                Debug.Assert(n > 0 && tokens[n - 1].Type == TokenConstants.Eof);
                 return tokens[n - 1];
             }
+
             return tokens[index];
         }
 
@@ -147,18 +163,12 @@ namespace Antlr4.Runtime
             return Lt(i).Type;
         }
 
-        public virtual ITokenSource TokenSource
-        {
-            get
-            {
-                return tokenSource;
-            }
-        }
+        public virtual ITokenSource TokenSource => tokenSource;
 
         [return: NotNull]
         public virtual string GetText()
         {
-            return string.Empty;
+            return String.Empty;
         }
 
         [return: NotNull]
@@ -174,6 +184,7 @@ namespace Antlr4.Runtime
             {
                 return GetText(Interval.Of(start.TokenIndex, stop.TokenIndex));
             }
+
             throw new NotSupportedException("The specified start and stop symbols are not supported.");
         }
 
@@ -183,6 +194,7 @@ namespace Antlr4.Runtime
             {
                 throw new InvalidOperationException("cannot consume EOF");
             }
+
             // buf always has at least tokens[p==0] in this method due to ctor
             lastToken = tokens[p];
             // track last token for LT(-1)
@@ -194,84 +206,23 @@ namespace Antlr4.Runtime
                 // p++ will leave this at 0
                 lastTokenBufferStart = lastToken;
             }
+
             p++;
             currentTokenIndex++;
             Sync(1);
         }
 
-        /// <summary>
-        /// Make sure we have 'need' elements from current position
-        /// <see cref="p">p</see>
-        /// . Last valid
-        /// <c>p</c>
-        /// index is
-        /// <c>tokens.length-1</c>
-        /// .
-        /// <c>p+need-1</c>
-        /// is the tokens index 'need' elements
-        /// ahead.  If we need 1 element,
-        /// <c>(p+1-1)==p</c>
-        /// must be less than
-        /// <c>tokens.length</c>
-        /// .
-        /// </summary>
-        protected internal virtual void Sync(int want)
-        {
-            int need = (p + want - 1) - n + 1;
-            // how many more elements we need?
-            if (need > 0)
-            {
-                Fill(need);
-            }
-        }
-
-        /// <summary>
-        /// Add
-        /// <paramref name="n"/>
-        /// elements to the buffer. Returns the number of tokens
-        /// actually added to the buffer. If the return value is less than
-        /// <paramref name="n"/>
-        /// ,
-        /// then EOF was reached before
-        /// <paramref name="n"/>
-        /// tokens could be added.
-        /// </summary>
-        protected internal virtual int Fill(int n)
-        {
-            for (int i = 0; i < n; i++)
-            {
-                if (this.n > 0 && tokens[this.n - 1].Type == TokenConstants.Eof)
-                {
-                    return i;
-                }
-                IToken t = tokenSource.NextToken();
-                Add(t);
-            }
-            return n;
-        }
-
-        protected internal virtual void Add([NotNull] IToken t)
-        {
-            if (n >= tokens.Length)
-            {
-                tokens = Arrays.CopyOf(tokens, tokens.Length * 2);
-            }
-            if (t is IWritableToken)
-            {
-                ((IWritableToken)t).TokenIndex = GetBufferStartIndex() + n;
-            }
-            tokens[n++] = t;
-        }
-
         /// <summary>Return a marker that we can release later.</summary>
         /// <remarks>
-        /// Return a marker that we can release later.
-        /// <p>The specific marker value used for this class allows for some level of
-        /// protection against misuse where
-        /// <c>seek()</c>
-        /// is called on a mark or
-        /// <c>release()</c>
-        /// is called in the wrong order.</p>
+        ///     Return a marker that we can release later.
+        ///     <p>
+        ///         The specific marker value used for this class allows for some level of
+        ///         protection against misuse where
+        ///         <c>seek()</c>
+        ///         is called on a mark or
+        ///         <c>release()</c>
+        ///         is called in the wrong order.
+        ///     </p>
         /// </remarks>
         public virtual int Mark()
         {
@@ -279,6 +230,7 @@ namespace Antlr4.Runtime
             {
                 lastTokenBufferStart = lastToken;
             }
+
             int mark = -numMarkers - 1;
             numMarkers++;
             return mark;
@@ -291,6 +243,7 @@ namespace Antlr4.Runtime
             {
                 throw new InvalidOperationException("release() called with an invalid marker.");
             }
+
             numMarkers--;
             if (numMarkers == 0)
             {
@@ -299,22 +252,17 @@ namespace Antlr4.Runtime
                 {
                     // Copy tokens[p]..tokens[n-1] to tokens[0]..tokens[(n-1)-p], reset ptrs
                     // p is last valid token; move nothing if p==n as we have no valid char
-                    System.Array.Copy(tokens, p, tokens, 0, n - p);
+                    Array.Copy(tokens, p, tokens, 0, n - p);
                     // shift n-p tokens from p to 0
                     n = n - p;
                     p = 0;
                 }
+
                 lastTokenBufferStart = lastToken;
             }
         }
 
-        public virtual int Index
-        {
-            get
-            {
-                return currentTokenIndex;
-            }
-        }
+        public virtual int Index => currentTokenIndex;
 
         public virtual void Seek(int index)
         {
@@ -323,24 +271,25 @@ namespace Antlr4.Runtime
             {
                 return;
             }
+
             if (index > currentTokenIndex)
             {
                 Sync(index - currentTokenIndex);
                 index = Math.Min(index, GetBufferStartIndex() + n - 1);
             }
+
             int bufferStartIndex = GetBufferStartIndex();
             int i = index - bufferStartIndex;
             if (i < 0)
             {
                 throw new ArgumentException("cannot seek to negative index " + index);
             }
-            else
+
+            if (i >= n)
             {
-                if (i >= n)
-                {
-                    throw new NotSupportedException("seek to index outside buffer: " + index + " not in " + bufferStartIndex + ".." + (bufferStartIndex + n));
-                }
+                throw new NotSupportedException("seek to index outside buffer: " + index + " not in " + bufferStartIndex + ".." + (bufferStartIndex + n));
             }
+
             p = i;
             currentTokenIndex = index;
             if (p == 0)
@@ -353,21 +302,9 @@ namespace Antlr4.Runtime
             }
         }
 
-        public virtual int Size
-        {
-            get
-            {
-                throw new NotSupportedException("Unbuffered stream cannot know its size");
-            }
-        }
+        public virtual int Size => throw new NotSupportedException("Unbuffered stream cannot know its size");
 
-        public virtual string SourceName
-        {
-            get
-            {
-                return tokenSource.SourceName;
-            }
-        }
+        public virtual string SourceName => tokenSource.SourceName;
 
         [return: NotNull]
         public virtual string GetText(Interval interval)
@@ -380,15 +317,89 @@ namespace Antlr4.Runtime
             {
                 throw new NotSupportedException("interval " + interval + " not in token buffer window: " + bufferStartIndex + ".." + bufferStopIndex);
             }
+
             int a = start - bufferStartIndex;
             int b = stop - bufferStartIndex;
-            StringBuilder buf = new StringBuilder();
-            for (int i = a; i <= b; i++)
+            StringBuilder buf = new();
+            for (int i = a;
+                i <= b;
+                i++)
             {
                 IToken t = tokens[i];
                 buf.Append(t.Text);
             }
+
             return buf.ToString();
+        }
+
+        /// <summary>
+        ///     Make sure we have 'need' elements from current position
+        ///     <see cref="p">p</see>
+        ///     . Last valid
+        ///     <c>p</c>
+        ///     index is
+        ///     <c>tokens.length-1</c>
+        ///     .
+        ///     <c>p+need-1</c>
+        ///     is the tokens index 'need' elements
+        ///     ahead.  If we need 1 element,
+        ///     <c>(p+1-1)==p</c>
+        ///     must be less than
+        ///     <c>tokens.length</c>
+        ///     .
+        /// </summary>
+        protected internal virtual void Sync(int want)
+        {
+            int need = p + want - 1 - n + 1;
+            // how many more elements we need?
+            if (need > 0)
+            {
+                Fill(need);
+            }
+        }
+
+        /// <summary>
+        ///     Add
+        ///     <paramref name="n" />
+        ///     elements to the buffer. Returns the number of tokens
+        ///     actually added to the buffer. If the return value is less than
+        ///     <paramref name="n" />
+        ///     ,
+        ///     then EOF was reached before
+        ///     <paramref name="n" />
+        ///     tokens could be added.
+        /// </summary>
+        protected internal virtual int Fill(int n)
+        {
+            for (int i = 0;
+                i < n;
+                i++)
+            {
+                if (this.n > 0 && tokens[this.n - 1].Type == TokenConstants.Eof)
+                {
+                    return i;
+                }
+
+                IToken t = tokenSource.NextToken();
+                Add(t);
+            }
+
+            return n;
+        }
+
+        protected internal virtual void Add([NotNull] IToken t)
+        {
+            if (n >= tokens.Length)
+            {
+                tokens = Arrays.CopyOf(tokens, tokens.Length * 2);
+            }
+
+            if (t is IWritableToken)
+            {
+                ((IWritableToken) t).TokenIndex = GetBufferStartIndex() + n;
+            }
+
+            tokens[n++] = t;
         }
 
         protected internal int GetBufferStartIndex()

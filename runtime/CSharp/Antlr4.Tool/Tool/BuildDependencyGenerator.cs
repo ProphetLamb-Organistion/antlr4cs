@@ -1,65 +1,64 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Antlr4.Codegen;
+
 namespace Antlr4.Tool
 {
-    using System.Collections.Generic;
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.Codegen;
-    using Antlr4.Parse;
-    using Antlr4.StringTemplate;
-    using Path = System.IO.Path;
-    using Uri = System.Uri;
-
-    /** Given a grammar file, show the dependencies on .tokens etc...
-     *  Using ST, emit a simple "make compatible" list of dependencies.
-     *  For example, combined grammar T.g (no token import) generates:
-     *
-     *  	TParser.java : T.g
-     *  	T.tokens : T.g
-     *  	TLexer.java : T.g
-     *
-     *  If we are using the listener pattern (-listener on the command line)
-     *  then we add:
-     *
-     *      TListener.java : T.g
-     *      TBaseListener.java : T.g
-     *
-     *  If we are using the visitor pattern (-visitor on the command line)
-     *  then we add:
-     *
-     *      TVisitor.java : T.g
-     *      TBaseVisitor.java : T.g
-     *
-     *  If "-lib libdir" is used on command-line with -depend and option
-     *  tokenVocab=A in grammar, then include the path like this:
-     *
-     * 		T.g: libdir/A.tokens
-     *
-     *  Pay attention to -o as well:
-     *
-     * 		outputdir/TParser.java : T.g
-     *
-     *  So this output shows what the grammar depends on *and* what it generates.
-     *
-     *  Operate on one grammar file at a time.  If given a list of .g on the
-     *  command-line with -depend, just emit the dependencies.  The grammars
-     *  may depend on each other, but the order doesn't matter.  Build tools,
-     *  reading in this output, will know how to organize it.
-     *
-     *  This code was obvious until I removed redundant "./" on front of files
-     *  and had to escape spaces in filenames :(
-     *
-     *  I literally copied from v3 so might be slightly inconsistent with the
-     *  v4 code base.
+    /**
+     * Given a grammar file, show the dependencies on .tokens etc...
+     * Using ST, emit a simple "make compatible" list of dependencies.
+     * For example, combined grammar T.g (no token import) generates:
+     * 
+     * TParser.java : T.g
+     * T.tokens : T.g
+     * TLexer.java : T.g
+     * 
+     * If we are using the listener pattern (-listener on the command line)
+     * then we add:
+     * 
+     * TListener.java : T.g
+     * TBaseListener.java : T.g
+     * 
+     * If we are using the visitor pattern (-visitor on the command line)
+     * then we add:
+     * 
+     * TVisitor.java : T.g
+     * TBaseVisitor.java : T.g
+     * 
+     * If "-lib libdir" is used on command-line with -depend and option
+     * tokenVocab=A in grammar, then include the path like this:
+     * 
+     * T.g: libdir/A.tokens
+     * 
+     * Pay attention to -o as well:
+     * 
+     * outputdir/TParser.java : T.g
+     * 
+     * So this output shows what the grammar depends on *and* what it generates.
+     * 
+     * Operate on one grammar file at a time.  If given a list of .g on the
+     * command-line with -depend, just emit the dependencies.  The grammars
+     * may depend on each other, but the order doesn't matter.  Build tools,
+     * reading in this output, will know how to organize it.
+     * 
+     * This code was obvious until I removed redundant "./" on front of files
+     * and had to escape spaces in filenames :(
+     * 
+     * I literally copied from v3 so might be slightly inconsistent with the
+     * v4 code base.
      */
     public class BuildDependencyGenerator
     {
-        protected AntlrTool tool;
         protected Grammar g;
         protected CodeGenerator generator;
         protected TemplateGroup templates;
+        protected AntlrTool tool;
 
         public BuildDependencyGenerator(AntlrTool tool, Grammar g)
         {
@@ -69,8 +68,9 @@ namespace Antlr4.Tool
             generator = new CodeGenerator(tool, g, language);
         }
 
-        /** From T.g return a list of File objects that
-         *  name files ANTLR will emit from T.g.
+        /**
+         * From T.g return a list of File objects that
+         * name files ANTLR will emit from T.g.
          */
         public virtual IList<string> GetGeneratedFileList()
         {
@@ -88,6 +88,7 @@ namespace Antlr4.Tool
             {
                 files.Add(GetOutputFile(generator.GetRecognizerFileName(true)));
             }
+
             files.Add(GetOutputFile(generator.GetRecognizerFileName(false)));
             // add output vocab file; e.g., T.tokens. This is always generated to
             // the base output directory, which will be just . if there is no -o option
@@ -103,6 +104,7 @@ namespace Antlr4.Tool
                 string fileName = g.name + suffix + headerExtST.Render();
                 files.Add(GetOutputFile(fileName));
             }
+
             if (g.IsCombined())
             {
                 // add autogenerated lexer; e.g., TLexer.java TLexer.h TLexer.tokens
@@ -128,6 +130,7 @@ namespace Antlr4.Tool
                 {
                     files.Add(GetOutputFile(generator.GetListenerFileName(true)));
                 }
+
                 files.Add(GetOutputFile(generator.GetListenerFileName(false)));
 
                 // add generated base listener; e.g., TBaseListener.java
@@ -135,6 +138,7 @@ namespace Antlr4.Tool
                 {
                     files.Add(GetOutputFile(generator.GetBaseListenerFileName(true)));
                 }
+
                 files.Add(GetOutputFile(generator.GetBaseListenerFileName(false)));
             }
 
@@ -145,6 +149,7 @@ namespace Antlr4.Tool
                 {
                     files.Add(GetOutputFile(generator.GetVisitorFileName(true)));
                 }
+
                 files.Add(GetOutputFile(generator.GetVisitorFileName(false)));
 
                 // add generated base visitor; e.g., TBaseVisitor.java
@@ -152,6 +157,7 @@ namespace Antlr4.Tool
                 {
                     files.Add(GetOutputFile(generator.GetBaseVisitorFileName(true)));
                 }
+
                 files.Add(GetOutputFile(generator.GetBaseVisitorFileName(false)));
             }
 
@@ -173,6 +179,7 @@ namespace Antlr4.Tool
             {
                 return null;
             }
+
             return files;
         }
 
@@ -233,6 +240,7 @@ namespace Antlr4.Tool
             {
                 return null;
             }
+
             return files;
         }
 
@@ -240,7 +248,7 @@ namespace Antlr4.Tool
          * Return a list of File objects that name files ANTLR will read
          * to process T.g; This can only be .tokens files and only
          * if they use the tokenVocab option.
-         *
+         * 
          * @return List of dependencies other than imported grammars
          */
         public virtual IList<string> GetNonImportDependenciesFileList()
@@ -282,9 +290,11 @@ namespace Antlr4.Tool
         public virtual void LoadDependencyTemplates()
         {
             if (templates != null)
+            {
                 return;
+            }
 
-            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.CodeBase).LocalPath;
+            string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.Location).LocalPath;
             string baseDirectory = Path.GetDirectoryName(codeBaseLocation);
             string fileName = Path.Combine("Tool", "Templates", "depend.stg");
             templates = new TemplateGroupFile(
@@ -303,16 +313,15 @@ namespace Antlr4.Tool
             {
                 return fileName;
             }
-            else if (outputDir.IndexOf(' ') >= 0)
+
+            if (outputDir.IndexOf(' ') >= 0)
             {
                 // has spaces?
                 string escSpaces = outputDir.Replace(" ", "\\ ");
                 return Path.Combine(escSpaces, fileName);
             }
-            else
-            {
-                return Path.Combine(outputDir, fileName);
-            }
+
+            return Path.Combine(outputDir, fileName);
         }
     }
 }

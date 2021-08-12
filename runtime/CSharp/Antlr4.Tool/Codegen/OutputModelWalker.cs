@@ -1,44 +1,39 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Antlr4.Codegen.Model;
+using Antlr4.Misc;
+using Antlr4.Tool;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Misc;
-    using Antlr4.StringTemplate;
-    using Antlr4.StringTemplate.Compiler;
-    using Antlr4.Tool;
-    using DictionaryEntry = System.Collections.DictionaryEntry;
-    using FieldAccessException = System.FieldAccessException;
-    using IDictionary = System.Collections.IDictionary;
-    using IEnumerable = System.Collections.IEnumerable;
-    using Type = System.Type;
-    using IDictionaryEnumerator = System.Collections.IDictionaryEnumerator;
-
-    /** Convert an output model tree to template hierarchy by walking
-     *  the output model. Each output model object has a corresponding template
-     *  of the same name.  An output model object can have nested objects.
-     *  We identify those nested objects by the list of arguments in the template
-     *  definition. For example, here is the definition of the parser template:
-     *
-     *  Parser(parser, scopes, functions) ::= &lt;&lt;...&gt;&gt;
-     *
-     *  The first template argument is always the output model object from which
-     *  this walker will create the template. Any other arguments identify
-     *  the field names within the output model object of nested model objects.
-     *  So, in this case, template Parser is saying that output model object
-     *  Parser has two fields the walker should chase called a scopes and functions.
-     *
-     *  This simple mechanism means we don't have to include code in every
-     *  output model object that says how to create the corresponding template.
+    /**
+     * Convert an output model tree to template hierarchy by walking
+     * the output model. Each output model object has a corresponding template
+     * of the same name.  An output model object can have nested objects.
+     * We identify those nested objects by the list of arguments in the template
+     * definition. For example, here is the definition of the parser template:
+     * 
+     * Parser(parser, scopes, functions) ::= &lt;&lt;...&gt;&gt;
+     * 
+     * The first template argument is always the output model object from which
+     * this walker will create the template. Any other arguments identify
+     * the field names within the output model object of nested model objects.
+     * So, in this case, template Parser is saying that output model object
+     * Parser has two fields the walker should chase called a scopes and functions.
+     * 
+     * This simple mechanism means we don't have to include code in every
+     * output model object that says how to create the corresponding template.
      */
     public class OutputModelWalker
     {
-        internal AntlrTool tool;
         internal TemplateGroup templates;
+        internal AntlrTool tool;
 
         public OutputModelWalker(AntlrTool tool, TemplateGroup templates)
         {
@@ -58,7 +53,9 @@ namespace Antlr4.Codegen
             }
 
             if (header)
+            {
                 templateName += "Header";
+            }
 
             Template st = templates.GetInstanceOf(templateName);
             if (st == null)
@@ -66,6 +63,7 @@ namespace Antlr4.Codegen
                 tool.errMgr.ToolError(ErrorType.CODE_GEN_TEMPLATES_INCOMPLETE, templateName);
                 return new Template("[" + templateName + " invalid]");
             }
+
             if (st.impl.FormalArguments == null)
             {
                 tool.errMgr.ToolError(ErrorType.CODE_TEMPLATE_ARG_ISSUE, templateName, "<none>");
@@ -73,8 +71,10 @@ namespace Antlr4.Codegen
             }
 
             IDictionary<string, FormalArgument> formalArgs = new LinkedHashMap<string, FormalArgument>();
-            foreach (var argument in st.impl.FormalArguments)
+            foreach (FormalArgument argument in st.impl.FormalArguments)
+            {
                 formalArgs[argument.Name] = argument;
+            }
 
             // PASS IN OUTPUT MODEL OBJECT TO TEMPLATE AS FIRST ARG
             string modelArgName = st.impl.FormalArguments[0].Name;
@@ -101,7 +101,9 @@ namespace Antlr4.Codegen
 
                 // Just don't set [ModelElement] fields w/o formal argument in target ST
                 if (!formalArgs.ContainsKey(fieldName))
+                {
                     continue;
+                }
 
                 try
                 {
@@ -109,19 +111,20 @@ namespace Antlr4.Codegen
                     if (o is OutputModelObject)
                     {
                         // SINGLE MODEL OBJECT?
-                        OutputModelObject nestedOmo = (OutputModelObject)o;
+                        OutputModelObject nestedOmo = (OutputModelObject) o;
                         Template nestedST = Walk(nestedOmo, header);
                         //System.Console.WriteLine("set ModelElement " + fieldName + "=" + nestedST + " in " + templateName);
                         st.Add(fieldName, nestedST);
                     }
                     else if (o is IDictionary)
                     {
-                        IDictionary nestedOmoMap = (IDictionary)o;
+                        IDictionary nestedOmoMap = (IDictionary) o;
                         IDictionary<object, Template> m = new LinkedHashMap<object, Template>();
-                        for (IDictionaryEnumerator enumerator = nestedOmoMap.GetEnumerator(); enumerator.MoveNext(); )
+                        for (IDictionaryEnumerator enumerator = nestedOmoMap.GetEnumerator();
+                            enumerator.MoveNext();)
                         {
                             DictionaryEntry entry = enumerator.Entry;
-                            Template nestedST = Walk((OutputModelObject)entry.Value, header);
+                            Template nestedST = Walk((OutputModelObject) entry.Value, header);
                             //System.Console.WriteLine("set ModelElement " + fieldName + "=" + nestedST + " in " + templateName);
                             m[entry.Key] = nestedST;
                         }
@@ -131,12 +134,15 @@ namespace Antlr4.Codegen
                     else if (o is IEnumerable && !(o is string))
                     {
                         // LIST OF MODEL OBJECTS?
-                        IEnumerable nestedOmos = (IEnumerable)o;
+                        IEnumerable nestedOmos = (IEnumerable) o;
                         foreach (object nestedOmo in nestedOmos)
                         {
                             if (nestedOmo == null)
+                            {
                                 continue;
-                            Template nestedST = Walk((OutputModelObject)nestedOmo, header);
+                            }
+
+                            Template nestedST = Walk((OutputModelObject) nestedOmo, header);
                             //System.Console.WriteLine("set ModelElement " + fieldName + "=" + nestedST + " in " + templateName);
                             st.Add(fieldName, nestedST);
                         }
@@ -158,9 +164,11 @@ namespace Antlr4.Codegen
 
         private static IEnumerable<FieldInfo> GetFields(Type type)
         {
-            var declaredFields = type.GetTypeInfo().DeclaredFields;
+            IEnumerable<FieldInfo> declaredFields = type.GetTypeInfo().DeclaredFields;
             if (type.GetTypeInfo().BaseType != null)
+            {
                 declaredFields = declaredFields.Concat(GetFields(type.GetTypeInfo().BaseType));
+            }
 
             return declaredFields;
         }

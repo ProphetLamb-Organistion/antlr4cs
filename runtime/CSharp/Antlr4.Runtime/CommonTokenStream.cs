@@ -1,70 +1,77 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
 
 namespace Antlr4.Runtime
 {
     /// <summary>
-    /// This class extends
-    /// <see cref="BufferedTokenStream"/>
-    /// with functionality to filter
-    /// token streams to tokens on a particular channel (tokens where
-    /// <see cref="IToken.Channel()"/>
-    /// returns a particular value).
-    /// <p>
-    /// This token stream provides access to all tokens by index or when calling
-    /// methods like
-    /// <see cref="BufferedTokenStream.GetText()"/>
-    /// . The channel filtering is only used for code
-    /// accessing tokens via the lookahead methods
-    /// <see cref="BufferedTokenStream.La(int)"/>
-    /// ,
-    /// <see cref="Lt(int)"/>
-    /// , and
-    /// <see cref="Lb(int)"/>
-    /// .</p>
-    /// <p>
-    /// By default, tokens are placed on the default channel
-    /// (
-    /// <see cref="TokenConstants.DefaultChannel"/>
-    /// ), but may be reassigned by using the
-    /// <c>-&gt;channel(HIDDEN)</c>
-    /// lexer command, or by using an embedded action to
-    /// call
-    /// <see cref="Lexer.Channel"/>
-    /// .
-    /// </p>
-    /// <p>
-    /// Note: lexer rules which use the
-    /// <c>-&gt;skip</c>
-    /// lexer command or call
-    /// <see cref="Lexer.Skip()"/>
-    /// do not produce tokens at all, so input text matched by
-    /// such a rule will not be available as part of the token stream, regardless of
-    /// channel.</p>
+    ///     This class extends
+    ///     <see cref="BufferedTokenStream" />
+    ///     with functionality to filter
+    ///     token streams to tokens on a particular channel (tokens where
+    ///     <see cref="IToken.Channel()" />
+    ///     returns a particular value).
+    ///     <p>
+    ///         This token stream provides access to all tokens by index or when calling
+    ///         methods like
+    ///         <see cref="BufferedTokenStream.GetText()" />
+    ///         . The channel filtering is only used for code
+    ///         accessing tokens via the lookahead methods
+    ///         <see cref="BufferedTokenStream.La(int)" />
+    ///         ,
+    ///         <see cref="Lt(int)" />
+    ///         , and
+    ///         <see cref="Lb(int)" />
+    ///         .
+    ///     </p>
+    ///     <p>
+    ///         By default, tokens are placed on the default channel
+    ///         (
+    ///         <see cref="TokenConstants.DefaultChannel" />
+    ///         ), but may be reassigned by using the
+    ///         <c>-&gt;channel(HIDDEN)</c>
+    ///         lexer command, or by using an embedded action to
+    ///         call
+    ///         <see cref="Lexer.Channel" />
+    ///         .
+    ///     </p>
+    ///     <p>
+    ///         Note: lexer rules which use the
+    ///         <c>-&gt;skip</c>
+    ///         lexer command or call
+    ///         <see cref="Lexer.Skip()" />
+    ///         do not produce tokens at all, so input text matched by
+    ///         such a rule will not be available as part of the token stream, regardless of
+    ///         channel.
+    ///     </p>
     /// </summary>
     public class CommonTokenStream : BufferedTokenStream
     {
         /// <summary>Specifies the channel to use for filtering tokens.</summary>
         /// <remarks>
-        /// Specifies the channel to use for filtering tokens.
-        /// <p>
-        /// The default value is
-        /// <see cref="TokenConstants.DefaultChannel"/>
-        /// , which matches the
-        /// default channel assigned to tokens created by the lexer.</p>
+        ///     Specifies the channel to use for filtering tokens.
+        ///     <p>
+        ///         The default value is
+        ///         <see cref="TokenConstants.DefaultChannel" />
+        ///         , which matches the
+        ///         default channel assigned to tokens created by the lexer.
+        ///     </p>
         /// </remarks>
         protected internal int channel = TokenConstants.DefaultChannel;
 
         /// <summary>
-        /// Constructs a new
-        /// <see cref="CommonTokenStream"/>
-        /// using the specified token
-        /// source and the default token channel (
-        /// <see cref="TokenConstants.DefaultChannel"/>
-        /// ).
+        ///     Constructs a new
+        ///     <see cref="CommonTokenStream" />
+        ///     using the specified token
+        ///     source and the default token channel (
+        ///     <see cref="TokenConstants.DefaultChannel" />
+        ///     ).
         /// </summary>
         /// <param name="tokenSource">The token source.</param>
         public CommonTokenStream([NotNull] ITokenSource tokenSource)
@@ -73,19 +80,19 @@ namespace Antlr4.Runtime
         }
 
         /// <summary>
-        /// Constructs a new
-        /// <see cref="CommonTokenStream"/>
-        /// using the specified token
-        /// source and filtering tokens to the specified channel. Only tokens whose
-        /// <see cref="IToken.Channel()"/>
-        /// matches
-        /// <paramref name="channel"/>
-        /// or have the
-        /// <see cref="IToken.Type()"/>
-        /// equal to
-        /// <see cref="TokenConstants.Eof"/>
-        /// will be returned by the
-        /// token stream lookahead methods.
+        ///     Constructs a new
+        ///     <see cref="CommonTokenStream" />
+        ///     using the specified token
+        ///     source and filtering tokens to the specified channel. Only tokens whose
+        ///     <see cref="IToken.Channel()" />
+        ///     matches
+        ///     <paramref name="channel" />
+        ///     or have the
+        ///     <see cref="IToken.Type()" />
+        ///     equal to
+        ///     <see cref="TokenConstants.Eof" />
+        ///     will be returned by the
+        ///     token stream lookahead methods.
         /// </summary>
         /// <param name="tokenSource">The token source.</param>
         /// <param name="channel">The channel to use for filtering tokens.</param>
@@ -102,10 +109,11 @@ namespace Antlr4.Runtime
 
         protected internal override IToken Lb(int k)
         {
-            if (k == 0 || (p - k) < 0)
+            if (k == 0 || p - k < 0)
             {
                 return null;
             }
+
             int i = p;
             int n = 1;
             // find k good tokens looking backwards
@@ -115,10 +123,12 @@ namespace Antlr4.Runtime
                 i = PreviousTokenOnChannel(i - 1, channel);
                 n++;
             }
+
             if (i < 0)
             {
                 return null;
             }
+
             return tokens[i];
         }
 
@@ -130,10 +140,12 @@ namespace Antlr4.Runtime
             {
                 return null;
             }
+
             if (k < 0)
             {
                 return Lb(-k);
             }
+
             int i = p;
             int n = 1;
             // we know tokens[p] is a good one
@@ -145,8 +157,10 @@ namespace Antlr4.Runtime
                 {
                     i = NextTokenOnChannel(i + 1, channel);
                 }
+
                 n++;
             }
+
             //		if ( i>range ) range = i;
             return tokens[i];
         }
@@ -156,18 +170,22 @@ namespace Antlr4.Runtime
         {
             int n = 0;
             Fill();
-            for (int i = 0; i < tokens.Count; i++)
+            for (int i = 0;
+                i < tokens.Count;
+                i++)
             {
                 IToken t = tokens[i];
                 if (t.Channel == channel)
                 {
                     n++;
                 }
+
                 if (t.Type == TokenConstants.Eof)
                 {
                     break;
                 }
             }
+
             return n;
         }
     }

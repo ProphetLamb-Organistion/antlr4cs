@@ -3,7 +3,9 @@
 
 namespace Antlr4.Tool.Ast
 {
-    /** Tag indicated AST node is a rule element like token or rule ref. */
+    /**
+     * Tag indicated AST node is a rule element like token or rule ref.
+     */
     public interface RuleElementAST
     {
     }

@@ -1,8 +1,6 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using Antlr4.Runtime.Sharpen;
-
 namespace Antlr4.Runtime.Atn
 {
     /// <author>Sam Harwell</author>
@@ -19,11 +17,12 @@ namespace Antlr4.Runtime.Atn
 
         public override ATNConfigSet Clone(bool @readonly)
         {
-            Antlr4.Runtime.Atn.OrderedATNConfigSet copy = new Antlr4.Runtime.Atn.OrderedATNConfigSet(this, @readonly);
-            if (!@readonly && this.IsReadOnly)
+            OrderedATNConfigSet copy = new(this, @readonly);
+            if (!@readonly && IsReadOnly)
             {
                 copy.AddAll(this);
             }
+
             return copy;
         }
 

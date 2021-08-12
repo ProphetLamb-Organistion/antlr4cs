@@ -1,19 +1,19 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-
     public abstract class OutputFile : OutputModelObject
     {
+        public readonly string ANTLRVersion;
         public readonly string fileName;
         public readonly string grammarFileName;
-        public readonly string ANTLRVersion;
-        public readonly string TokenLabelType;
         public readonly string InputSymbolType;
+        public readonly string TokenLabelType;
 
         protected OutputFile(OutputModelFactory factory, string fileName)
             : base(factory)
@@ -34,6 +34,7 @@ namespace Antlr4.Codegen.Model
                 ActionAST ast = g.namedActions[name];
                 namedActions[name] = new Action(factory, ast);
             }
+
             return namedActions;
         }
     }

@@ -1,22 +1,22 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using Antlr4.Runtime;
-using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Tree
 {
     public class TerminalNodeImpl : ITerminalNode
     {
-        public IToken symbol;
-
         public IRuleNode parent;
+        public IToken symbol;
 
         public TerminalNodeImpl(IToken symbol)
         {
             this.symbol = symbol;
         }
+
+        public virtual IToken Payload => symbol;
 
         public virtual IParseTree GetChild(int i)
         {
@@ -28,53 +28,15 @@ namespace Antlr4.Runtime.Tree
             return GetChild(i);
         }
 
-        public virtual IToken Symbol
-        {
-            get
-            {
-                return symbol;
-            }
-        }
+        public virtual IToken Symbol => symbol;
 
-        public virtual IRuleNode Parent
-        {
-            get
-            {
-                return parent;
-            }
-        }
+        public virtual IRuleNode Parent => parent;
 
-        IParseTree IParseTree.Parent
-        {
-            get
-            {
-                return Parent;
-            }
-        }
+        IParseTree IParseTree.Parent => Parent;
 
-        ITree ITree.Parent
-        {
-            get
-            {
-                return Parent;
-            }
-        }
+        ITree ITree.Parent => Parent;
 
-        public virtual IToken Payload
-        {
-            get
-            {
-                return symbol;
-            }
-        }
-
-        object ITree.Payload
-        {
-            get
-            {
-                return Payload;
-            }
-        }
+        object ITree.Payload => Payload;
 
         public virtual Interval SourceInterval
         {
@@ -85,17 +47,12 @@ namespace Antlr4.Runtime.Tree
                     int tokenIndex = symbol.TokenIndex;
                     return new Interval(tokenIndex, tokenIndex);
                 }
+
                 return Interval.Invalid;
             }
         }
 
-        public virtual int ChildCount
-        {
-            get
-            {
-                return 0;
-            }
-        }
+        public virtual int ChildCount => 0;
 
         public virtual T Accept<T>(IParseTreeVisitor<T> visitor)
         {
@@ -108,10 +65,16 @@ namespace Antlr4.Runtime.Tree
             {
                 return symbol.Text;
             }
+
             return null;
         }
 
         public virtual string ToStringTree(Parser parser)
+        {
+            return ToString();
+        }
+
+        public virtual string ToStringTree()
         {
             return ToString();
         }
@@ -124,17 +87,11 @@ namespace Antlr4.Runtime.Tree
                 {
                     return "<EOF>";
                 }
+
                 return symbol.Text;
             }
-            else
-            {
-                return "<null>";
-            }
-        }
 
-        public virtual string ToStringTree()
-        {
-            return ToString();
+            return "<null>";
         }
     }
 }

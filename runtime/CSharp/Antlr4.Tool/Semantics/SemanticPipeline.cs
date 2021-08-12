@@ -1,39 +1,45 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Analysis;
+using Antlr4.Automata;
+using Antlr4.Runtime;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Semantics
 {
-    using System.Collections.Generic;
-    using Antlr4.Analysis;
-    using Antlr4.Automata;
-    using Antlr4.Parse;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using TokenConstants = Antlr4.Runtime.TokenConstants;
-
-    /** Do as much semantic checking as we can and fill in grammar
-     *  with rules, actions, and token definitions.
-     *  The only side effects are in the grammar passed to process().
-     *  We consume a bunch of memory here while we build up data structures
-     *  to perform checking, but all of it goes away after this pipeline object
-     *  gets garbage collected.
-     *
-     *  After this pipeline finishes, we can be sure that the grammar
-     *  is syntactically correct and that it's semantically correct enough for us
-     *  to attempt grammar analysis. We have assigned all token types.
-     *  Note that imported grammars bring in token and rule definitions
-     *  but only the root grammar and any implicitly created lexer grammar
-     *  get their token definitions filled up. We are treating the
-     *  imported grammars like includes.
-     *
-     *  The semantic pipeline works on root grammars (those that do the importing,
-     *  if any). Upon entry to the semantic pipeline, all imported grammars
-     *  should have been loaded into delegate grammar objects with their
-     *  ASTs created.  The pipeline does the BasicSemanticChecks on the
-     *  imported grammar before collecting symbols. We cannot perform the
-     *  simple checks such as undefined rule until we have collected all
-     *  tokens and rules from the imported grammars into a single collection.
+    /**
+     * Do as much semantic checking as we can and fill in grammar
+     * with rules, actions, and token definitions.
+     * The only side effects are in the grammar passed to process().
+     * We consume a bunch of memory here while we build up data structures
+     * to perform checking, but all of it goes away after this pipeline object
+     * gets garbage collected.
+     * 
+     * After this pipeline finishes, we can be sure that the grammar
+     * is syntactically correct and that it's semantically correct enough for us
+     * to attempt grammar analysis. We have assigned all token types.
+     * Note that imported grammars bring in token and rule definitions
+     * but only the root grammar and any implicitly created lexer grammar
+     * get their token definitions filled up. We are treating the
+     * imported grammars like includes.
+     * 
+     * The semantic pipeline works on root grammars (those that do the importing,
+     * if any). Upon entry to the semantic pipeline, all imported grammars
+     * should have been loaded into delegate grammar objects with their
+     * ASTs created.  The pipeline does the BasicSemanticChecks on the
+     * imported grammar before collecting symbols. We cannot perform the
+     * simple checks such as undefined rule until we have collected all
+     * tokens and rules from the imported grammars into a single collection.
      */
     public class SemanticPipeline
     {
@@ -47,10 +53,12 @@ namespace Antlr4.Semantics
         public virtual void Process()
         {
             if (g.ast == null)
+            {
                 return;
+            }
 
             // COLLECT RULE OBJECTS
-            RuleCollector ruleCollector = new RuleCollector(g);
+            RuleCollector ruleCollector = new(g);
             ruleCollector.Process(g.ast);
 
             // CLONE RULE ASTs FOR CONTEXT REFERENCE
@@ -63,20 +71,22 @@ namespace Antlr4.Semantics
                     g.contextASTs[rule.GetBaseContext()] = list;
                 }
 
-                list.Add((RuleAST)rule.ast.DupTree());
+                list.Add((RuleAST) rule.ast.DupTree());
             }
 
             // DO BASIC / EASY SEMANTIC CHECKS
             int prevErrors = g.tool.errMgr.GetNumErrors();
-            BasicSemanticChecks basics = new BasicSemanticChecks(g, ruleCollector);
+            BasicSemanticChecks basics = new(g, ruleCollector);
             basics.Process();
             if (g.tool.errMgr.GetNumErrors() > prevErrors)
+            {
                 return;
+            }
 
             // TRANSFORM LEFT-RECURSIVE RULES
             prevErrors = g.tool.errMgr.GetNumErrors();
             LeftRecursiveRuleTransformer lrtrans =
-                new LeftRecursiveRuleTransformer(g.ast, ruleCollector.rules.Values, g);
+                new(g.ast, ruleCollector.rules.Values, g);
             lrtrans.TranslateLeftRecursiveRules();
 
             // don't continue if we got errors during left-recursion elimination
@@ -86,7 +96,7 @@ namespace Antlr4.Semantics
             }
 
             // AUTO LEFT FACTORING
-            LeftFactoringRuleTransformer lftrans = new LeftFactoringRuleTransformer(g.ast, ruleCollector.rules, g);
+            LeftFactoringRuleTransformer lftrans = new(g.ast, ruleCollector.rules, g);
             lftrans.TranslateLeftFactoredRules();
 
             // STORE RULES IN GRAMMAR
@@ -96,11 +106,11 @@ namespace Antlr4.Semantics
             }
 
             // COLLECT SYMBOLS: RULES, ACTIONS, TERMINALS, ...
-            SymbolCollector collector = new SymbolCollector(g);
+            SymbolCollector collector = new(g);
             collector.Process(g.ast);
 
             // CHECK FOR SYMBOL COLLISIONS
-            SymbolChecks symcheck = new SymbolChecks(g, collector);
+            SymbolChecks symcheck = new(g, collector);
             symcheck.Process(); // side-effect: strip away redef'd rules.
 
             foreach (GrammarAST a in collector.namedActions)
@@ -111,7 +121,9 @@ namespace Antlr4.Semantics
             // LINK (outermost) ALT NODES WITH Alternatives
             foreach (Rule r in g.rules.Values)
             {
-                for (int i = 1; i <= r.numberOfAlts; i++)
+                for (int i = 1;
+                    i <= r.numberOfAlts;
+                    i++)
                 {
                     r.alt[i].ast.alt = r.alt[i];
                 }
@@ -126,7 +138,7 @@ namespace Antlr4.Semantics
             else
             {
                 AssignTokenTypes(g, collector.tokensDefs,
-                                 collector.tokenIDRefs, collector.terminals);
+                    collector.tokenIDRefs, collector.terminals);
             }
 
             symcheck.CheckForModeConflicts(g);
@@ -140,7 +152,9 @@ namespace Antlr4.Semantics
 
             // don't continue if we got symbol errors
             if (g.tool.GetNumErrors() > 0)
+            {
                 return;
+            }
 
             // CHECK ATTRIBUTE EXPRESSIONS FOR SEMANTIC VALIDITY
             AttributeChecks.CheckAllAttributeExpressions(g);
@@ -155,7 +169,9 @@ namespace Antlr4.Semantics
                 string ruleName = @ref.Text;
                 Rule r = g.GetRule(ruleName);
                 if (r != null)
+                {
                     r.isStartRule = false;
+                }
             }
         }
 
@@ -183,11 +199,11 @@ namespace Antlr4.Semantics
             }
 
             // FOR ALL X : 'xxx'; RULES, DEFINE 'xxx' AS TYPE X
-            IList<System.Tuple<GrammarAST, GrammarAST>> litAliases = Grammar.GetStringLiteralAliasesFromLexerRules(g.ast);
+            IList<Tuple<GrammarAST, GrammarAST>> litAliases = Grammar.GetStringLiteralAliasesFromLexerRules(g.ast);
             ISet<string> conflictingLiterals = new HashSet<string>();
             if (litAliases != null)
             {
-                foreach (System.Tuple<GrammarAST, GrammarAST> pair in litAliases)
+                foreach (Tuple<GrammarAST, GrammarAST> pair in litAliases)
                 {
                     GrammarAST nameAST = pair.Item1;
                     GrammarAST litAST = pair.Item2;
@@ -217,7 +233,6 @@ namespace Antlr4.Semantics
                     }
                 }
             }
-
         }
 
         internal virtual bool HasTypeOrMoreCommand([NotNull] Rule r)
@@ -228,7 +243,7 @@ namespace Antlr4.Semantics
                 return false;
             }
 
-            GrammarAST altActionAst = (GrammarAST)ast.GetFirstDescendantWithType(ANTLRParser.LEXER_ALT_ACTION);
+            GrammarAST altActionAst = (GrammarAST) ast.GetFirstDescendantWithType(ANTLRParser.LEXER_ALT_ACTION);
             if (altActionAst == null)
             {
                 // the rule isn't followed by any commands
@@ -236,9 +251,11 @@ namespace Antlr4.Semantics
             }
 
             // first child is the alt itself, subsequent are the actions
-            for (int i = 1; i < altActionAst.ChildCount; i++)
+            for (int i = 1;
+                i < altActionAst.ChildCount;
+                i++)
             {
-                GrammarAST node = (GrammarAST)altActionAst.GetChild(i);
+                GrammarAST node = (GrammarAST) altActionAst.GetChild(i);
                 if (node.Type == ANTLRParser.LEXER_ACTION_CALL)
                 {
                     if ("type".Equals(node.GetChild(0).Text))
@@ -256,7 +273,7 @@ namespace Antlr4.Semantics
         }
 
         internal virtual void AssignTokenTypes(Grammar g, IList<GrammarAST> tokensDefs,
-                              IList<GrammarAST> tokenIDs, IList<GrammarAST> terminals)
+            IList<GrammarAST> tokenIDs, IList<GrammarAST> terminals)
         {
             //Grammar G = g.getOutermostGrammar(); // put in root, even if imported
 
@@ -302,7 +319,7 @@ namespace Antlr4.Semantics
 
         /**
          * Assign constant values to custom channels defined in a grammar.
-         *
+         * 
          * @param g The grammar.
          * @param channelDefs A collection of AST nodes defining individual channels
          * within a {@code channels{}} block in the grammar.
@@ -333,7 +350,7 @@ namespace Antlr4.Semantics
 
                 if (outermost is LexerGrammar)
                 {
-                    LexerGrammar lexerGrammar = (LexerGrammar)outermost;
+                    LexerGrammar lexerGrammar = (LexerGrammar) outermost;
                     if (lexerGrammar.modes.ContainsKey(channelName))
                     {
                         g.tool.errMgr.GrammarError(ErrorType.CHANNEL_CONFLICTS_WITH_MODE, g.fileName, channel.Token, channelName);

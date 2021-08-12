@@ -1,12 +1,12 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+
 namespace Antlr4.Tool.Ast
 {
-    using Antlr4.Parse;
-    using IToken = Antlr.Runtime.IToken;
-    using ITree = Antlr.Runtime.Tree.ITree;
-
     public class RuleAST : GrammarASTWithOptions
     {
         public RuleAST(RuleAST node)
@@ -32,9 +32,12 @@ namespace Antlr4.Tool.Ast
 
         public virtual string GetRuleName()
         {
-            GrammarAST nameNode = (GrammarAST)GetChild(0);
+            GrammarAST nameNode = (GrammarAST) GetChild(0);
             if (nameNode != null)
+            {
                 return nameNode.Text;
+            }
+
             return null;
         }
 
@@ -52,9 +55,10 @@ namespace Antlr4.Tool.Ast
                 ITree lastChild = onlyAlt.GetChild(onlyAlt.ChildCount - 1);
                 if (lastChild.Type == ANTLRParser.ACTION)
                 {
-                    return (ActionAST)lastChild;
+                    return (ActionAST) lastChild;
                 }
             }
+
             return null;
         }
 

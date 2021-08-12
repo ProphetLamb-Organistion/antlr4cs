@@ -1,13 +1,11 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using Antlr4.Runtime;
+using Antlr4.Tool;
+
 namespace Antlr4.Parse
 {
-    using Antlr4.Tool;
-    using ICharStream = Antlr.Runtime.ICharStream;
-    using IToken = Antlr.Runtime.IToken;
-    using RecognitionException = Antlr.Runtime.RecognitionException;
-
     public class ToolANTLRLexer : ANTLRLexer
     {
         public AntlrTool tool;

@@ -1,18 +1,17 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Antlr4.Analysis;
+using Antlr4.Codegen.Model;
+using Antlr4.Codegen.Model.Decl;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Utility;
+using Antlr4.Tool;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Codegen
 {
-    using System.Collections.Generic;
-    using Antlr4.Analysis;
-    using Antlr4.Codegen.Model;
-    using Antlr4.Codegen.Model.Decl;
-    using Antlr4.Parse;
-    using Antlr4.Runtime.Atn;
-    using Antlr4.Tool;
-    using Antlr4.Tool.Ast;
-    using IntervalSet = Antlr4.Runtime.Misc.IntervalSet;
-
     /** */
     public class ParserFactory : DefaultOutputModelFactory
     {
@@ -35,21 +34,21 @@ namespace Antlr4.Codegen
         {
             if (r is LeftRecursiveRule)
             {
-                return new LeftRecursiveRuleFunction(this, (LeftRecursiveRule)r);
+                return new LeftRecursiveRuleFunction(this, (LeftRecursiveRule) r);
             }
-            else if (r.name.Contains(ATNSimulator.RuleLfVariantMarker))
+
+            if (r.name.Contains(ATNSimulator.RuleLfVariantMarker))
             {
                 return new LeftFactoredRuleFunction(this, r);
             }
-            else if (r.name.Contains(ATNSimulator.RuleNolfVariantMarker))
+
+            if (r.name.Contains(ATNSimulator.RuleNolfVariantMarker))
             {
                 return new LeftUnfactoredRuleFunction(this, r);
             }
-            else
-            {
-                RuleFunction rf = new RuleFunction(this, r);
-                return rf;
-            }
+
+            RuleFunction rf = new(this, r);
+            return rf;
         }
 
         public override CodeBlockForAlt Epsilon(Alternative alt, bool outerMost)
@@ -60,7 +59,10 @@ namespace Antlr4.Codegen
         public override CodeBlockForAlt Alternative(Alternative alt, bool outerMost)
         {
             if (outerMost)
+            {
                 return new CodeBlockForOuterMostAlt(this, alt);
+            }
+
             return new CodeBlockForAlt(this);
         }
 
@@ -82,17 +84,20 @@ namespace Antlr4.Codegen
 
         public override IList<SrcOp> RuleRef(GrammarAST ID, GrammarAST label, GrammarAST args)
         {
-            InvokeRule invokeOp = new InvokeRule(this, ID, label);
+            InvokeRule invokeOp = new(this, ID, label);
             // If no manual label and action refs as token/rule not label, we need to define implicit label
             if (controller.NeedsImplicitLabel(ID, invokeOp))
+            {
                 DefineImplicitLabel(ID, invokeOp);
+            }
+
             AddToLabelList listLabelOp = GetAddToListOpIfListLabelPresent(invokeOp, label);
             return List(invokeOp, listLabelOp);
         }
 
         public override IList<SrcOp> TokenRef(GrammarAST ID, GrammarAST labelAST, GrammarAST args)
         {
-            MatchToken matchOp = new MatchToken(this, (TerminalAST)ID);
+            MatchToken matchOp = new(this, (TerminalAST) ID);
             if (labelAST != null)
             {
                 string label = labelAST.Text;
@@ -119,8 +124,12 @@ namespace Antlr4.Codegen
                 //				getCurrentRuleFunction().addContextDecl(ID.getAltLabel(), l);
                 //			}
             }
+
             if (controller.NeedsImplicitLabel(ID, matchOp))
+            {
                 DefineImplicitLabel(ID, matchOp);
+            }
+
             AddToLabelList listLabelOp = GetAddToListOpIfListLabelPresent(matchOp, labelAST);
             return List(matchOp, listLabelOp);
         }
@@ -139,9 +148,14 @@ namespace Antlr4.Codegen
         {
             MatchSet matchOp;
             if (invert)
+            {
                 matchOp = new MatchNotSet(this, setAST);
+            }
             else
+            {
                 matchOp = new MatchSet(this, setAST);
+            }
+
             if (labelAST != null)
             {
                 string label = labelAST.Text;
@@ -159,15 +173,19 @@ namespace Antlr4.Codegen
                     rf.AddContextDecl(setAST.GetAltLabel(), d);
                 }
             }
+
             if (controller.NeedsImplicitLabel(setAST, matchOp))
+            {
                 DefineImplicitLabel(setAST, matchOp);
+            }
+
             AddToLabelList listLabelOp = GetAddToListOpIfListLabelPresent(matchOp, labelAST);
             return List(matchOp, listLabelOp);
         }
 
         public override IList<SrcOp> Wildcard(GrammarAST ast, GrammarAST labelAST)
         {
-            Wildcard wild = new Wildcard(this, ast);
+            Wildcard wild = new(this, ast);
             // TODO: dup with tokenRef
             if (labelAST != null)
             {
@@ -181,15 +199,19 @@ namespace Antlr4.Codegen
                     GetCurrentRuleFunction().AddContextDecl(ast.GetAltLabel(), l);
                 }
             }
+
             if (controller.NeedsImplicitLabel(ast, wild))
+            {
                 DefineImplicitLabel(ast, wild);
+            }
+
             AddToLabelList listLabelOp = GetAddToListOpIfListLabelPresent(wild, labelAST);
             return List(wild, listLabelOp);
         }
 
         public override Choice GetChoiceBlock(BlockAST blkAST, IList<CodeBlockForAlt> alts, GrammarAST labelAST)
         {
-            int decision = ((DecisionState)blkAST.atnState).decision;
+            int decision = ((DecisionState) blkAST.atnState).decision;
             Choice c;
             if (!g.tool.force_atn && AnalysisPipeline.Disjoint(g.decisionLOOK[decision]))
             {
@@ -201,7 +223,8 @@ namespace Antlr4.Codegen
             }
 
             if (labelAST != null)
-            { // for x=(...), define x or x_list
+            {
+                // for x=(...), define x or x_list
                 string label = labelAST.Text;
                 Decl d = GetTokenLabelDecl(label);
                 c.label = d;
@@ -209,7 +232,7 @@ namespace Antlr4.Codegen
                 if (labelAST.Parent.Type == ANTLRParser.PLUS_ASSIGN)
                 {
                     string listLabel = GetTarget().GetListLabel(label);
-                    TokenListDecl l = new TokenListDecl(this, listLabel);
+                    TokenListDecl l = new(this, listLabel);
                     GetCurrentRuleFunction().AddContextDecl(labelAST.GetAltLabel(), l);
                 }
             }
@@ -224,15 +247,15 @@ namespace Antlr4.Codegen
                 int decision;
                 if (ebnfRoot.Type == ANTLRParser.POSITIVE_CLOSURE)
                 {
-                    decision = ((PlusLoopbackState)ebnfRoot.atnState).decision;
+                    decision = ((PlusLoopbackState) ebnfRoot.atnState).decision;
                 }
                 else if (ebnfRoot.Type == ANTLRParser.CLOSURE)
                 {
-                    decision = ((StarLoopEntryState)ebnfRoot.atnState).decision;
+                    decision = ((StarLoopEntryState) ebnfRoot.atnState).decision;
                 }
                 else
                 {
-                    decision = ((DecisionState)ebnfRoot.atnState).decision;
+                    decision = ((DecisionState) ebnfRoot.atnState).decision;
                 }
 
                 if (AnalysisPipeline.Disjoint(g.decisionLOOK[decision]))
@@ -258,29 +281,48 @@ namespace Antlr4.Codegen
         {
             int ebnf = 0;
             if (ebnfRoot != null)
+            {
                 ebnf = ebnfRoot.Type;
+            }
+
             Choice c = null;
             switch (ebnf)
             {
-            case ANTLRParser.OPTIONAL:
-                if (alts.Count == 1)
-                    c = new LL1OptionalBlockSingleAlt(this, ebnfRoot, alts);
-                else
-                    c = new LL1OptionalBlock(this, ebnfRoot, alts);
-                break;
-            case ANTLRParser.CLOSURE:
-                if (alts.Count == 1)
-                    c = new LL1StarBlockSingleAlt(this, ebnfRoot, alts);
-                else
-                    c = GetComplexEBNFBlock(ebnfRoot, alts);
-                break;
-            case ANTLRParser.POSITIVE_CLOSURE:
-                if (alts.Count == 1)
-                    c = new LL1PlusBlockSingleAlt(this, ebnfRoot, alts);
-                else
-                    c = GetComplexEBNFBlock(ebnfRoot, alts);
-                break;
+                case ANTLRParser.OPTIONAL:
+                    if (alts.Count == 1)
+                    {
+                        c = new LL1OptionalBlockSingleAlt(this, ebnfRoot, alts);
+                    }
+                    else
+                    {
+                        c = new LL1OptionalBlock(this, ebnfRoot, alts);
+                    }
+
+                    break;
+                case ANTLRParser.CLOSURE:
+                    if (alts.Count == 1)
+                    {
+                        c = new LL1StarBlockSingleAlt(this, ebnfRoot, alts);
+                    }
+                    else
+                    {
+                        c = GetComplexEBNFBlock(ebnfRoot, alts);
+                    }
+
+                    break;
+                case ANTLRParser.POSITIVE_CLOSURE:
+                    if (alts.Count == 1)
+                    {
+                        c = new LL1PlusBlockSingleAlt(this, ebnfRoot, alts);
+                    }
+                    else
+                    {
+                        c = GetComplexEBNFBlock(ebnfRoot, alts);
+                    }
+
+                    break;
             }
+
             return c;
         }
 
@@ -288,20 +330,24 @@ namespace Antlr4.Codegen
         {
             int ebnf = 0;
             if (ebnfRoot != null)
+            {
                 ebnf = ebnfRoot.Type;
+            }
+
             Choice c = null;
             switch (ebnf)
             {
-            case ANTLRParser.OPTIONAL:
-                c = new OptionalBlock(this, ebnfRoot, alts);
-                break;
-            case ANTLRParser.CLOSURE:
-                c = new StarBlock(this, ebnfRoot, alts);
-                break;
-            case ANTLRParser.POSITIVE_CLOSURE:
-                c = new PlusBlock(this, ebnfRoot, alts);
-                break;
+                case ANTLRParser.OPTIONAL:
+                    c = new OptionalBlock(this, ebnfRoot, alts);
+                    break;
+                case ANTLRParser.CLOSURE:
+                    c = new StarBlock(this, ebnfRoot, alts);
+                    break;
+                case ANTLRParser.POSITIVE_CLOSURE:
+                    c = new PlusBlock(this, ebnfRoot, alts);
+                    break;
             }
+
             return c;
         }
 
@@ -328,23 +374,25 @@ namespace Antlr4.Codegen
                 string implLabel =
                     GetTarget().GetImplicitSetLabel(ast.Token.TokenIndex.ToString());
                 d = GetTokenLabelDecl(implLabel);
-                ((TokenDecl)d).isImplicit = true;
+                ((TokenDecl) d).isImplicit = true;
             }
             else if (ast.Type == ANTLRParser.RULE_REF)
-            { // a rule reference?
+            {
+                // a rule reference?
                 Rule r = g.GetRule(ast.Text);
                 string implLabel = GetTarget().GetImplicitRuleLabel(ast.Text);
                 string ctxName =
                     GetTarget().GetRuleFunctionContextStructName(r);
                 d = new RuleContextDecl(this, implLabel, ctxName);
-                ((RuleContextDecl)d).isImplicit = true;
+                ((RuleContextDecl) d).isImplicit = true;
             }
             else
             {
                 string implLabel = GetTarget().GetImplicitTokenLabel(ast.Text);
                 d = GetTokenLabelDecl(implLabel);
-                ((TokenDecl)d).isImplicit = true;
+                ((TokenDecl) d).isImplicit = true;
             }
+
             op.GetLabels().Add(d);
             // all labels must be in scope struct in case we exec action out of context
             GetCurrentRuleFunction().AddContextDecl(ast.GetAltLabel(), d);
@@ -358,6 +406,7 @@ namespace Antlr4.Codegen
                 string listLabel = GetTarget().GetListLabel(label.Text);
                 labelOp = new AddToLabelList(this, listLabel, op.GetLabels()[0]);
             }
+
             return labelOp;
         }
     }

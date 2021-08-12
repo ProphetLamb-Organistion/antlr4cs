@@ -4,62 +4,50 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Antlr4.Runtime;
-using Antlr4.Runtime.Atn;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
-using Interlocked = System.Threading.Interlocked;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.Threading;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Dfa
 {
     public class DFA
     {
-        /// <summary>A set of all DFA states.</summary>
-        /// <remarks>
-        /// A set of all DFA states. Use
-        /// <see cref="System.Collections.Generic.IDictionary{K, V}"/>
-        /// so we can get old state back
-        /// (
-        /// <see cref="HashSet{T}"/>
-        /// only allows you to see if it's there).
-        /// </remarks>
-        [NotNull]
-        public readonly ConcurrentDictionary<DFAState, DFAState> states = new ConcurrentDictionary<DFAState, DFAState>();
+        [NotNull] private static readonly EmptyEdgeMap<DFAState> emptyPrecedenceEdges = new(0, 200);
 
-        [NotNull]
-        public readonly AtomicReference<DFAState> s0 = new AtomicReference<DFAState>();
-
-        [NotNull]
-        public readonly AtomicReference<DFAState> s0full = new AtomicReference<DFAState>();
+        /// <summary>From which ATN state did we create this DFA?</summary>
+        [NotNull] public readonly ATNState atnStartState;
 
         public readonly int decision;
 
-        /// <summary>From which ATN state did we create this DFA?</summary>
-        [NotNull]
-        public readonly ATNState atnStartState;
-
-        private int nextStateNumber;
-
-        private readonly int minDfaEdge;
-
-        private readonly int maxDfaEdge;
-
-        [NotNull]
-        private static readonly Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState> emptyPrecedenceEdges = new Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState>(0, 200);
-
-        [NotNull]
-        private readonly Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState> emptyEdgeMap;
-
-        [NotNull]
-        private readonly Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState> emptyContextEdgeMap;
-
         /// <summary>
-        /// <see langword="true"/>
-        /// if this DFA is for a precedence decision; otherwise,
-        /// <see langword="false"/>
-        /// . This is the backing field for <see cref="IsPrecedenceDfa"/>.
+        ///     <see langword="true" />
+        ///     if this DFA is for a precedence decision; otherwise,
+        ///     <see langword="false" />
+        ///     . This is the backing field for <see cref="IsPrecedenceDfa" />.
         /// </summary>
         private readonly bool precedenceDfa;
+
+        [NotNull] public readonly AtomicReference<DFAState> s0 = new();
+
+        [NotNull] public readonly AtomicReference<DFAState> s0full = new();
+
+        /// <summary>A set of all DFA states.</summary>
+        /// <remarks>
+        ///     A set of all DFA states. Use
+        ///     <see cref="System.Collections.Generic.IDictionary{K, V}" />
+        ///     so we can get old state back
+        ///     (
+        ///     <see cref="HashSet{T}" />
+        ///     only allows you to see if it's there).
+        /// </remarks>
+        [NotNull] public readonly ConcurrentDictionary<DFAState, DFAState> states = new();
+
+        private int nextStateNumber;
 
         public DFA([NotNull] ATNState atnStartState)
             : this(atnStartState, 0)
@@ -72,103 +60,76 @@ namespace Antlr4.Runtime.Dfa
             this.decision = decision;
             if (this.atnStartState.atn.grammarType == ATNType.Lexer)
             {
-                minDfaEdge = LexerATNSimulator.MinDfaEdge;
-                maxDfaEdge = LexerATNSimulator.MaxDfaEdge;
+                MinDfaEdge = LexerATNSimulator.MinDfaEdge;
+                MaxDfaEdge = LexerATNSimulator.MaxDfaEdge;
             }
             else
             {
-                minDfaEdge = TokenConstants.Eof;
-                maxDfaEdge = atnStartState.atn.maxTokenType;
+                MinDfaEdge = TokenConstants.Eof;
+                MaxDfaEdge = atnStartState.atn.maxTokenType;
             }
-            this.emptyEdgeMap = new Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState>(minDfaEdge, maxDfaEdge);
-            this.emptyContextEdgeMap = new Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState>(-1, atnStartState.atn.states.Count - 1);
+
+            EmptyEdgeMap = new EmptyEdgeMap<DFAState>(MinDfaEdge, MaxDfaEdge);
+            EmptyContextEdgeMap = new EmptyEdgeMap<DFAState>(-1, atnStartState.atn.states.Count - 1);
             bool isPrecedenceDfa = false;
             if (atnStartState is StarLoopEntryState)
             {
-                if (((StarLoopEntryState)atnStartState).precedenceRuleDecision)
+                if (((StarLoopEntryState) atnStartState).precedenceRuleDecision)
                 {
                     isPrecedenceDfa = true;
-                    this.s0.Set(new DFAState(emptyPrecedenceEdges, EmptyContextEdgeMap, new ATNConfigSet()));
-                    this.s0full.Set(new DFAState(emptyPrecedenceEdges, EmptyContextEdgeMap, new ATNConfigSet()));
+                    s0.Set(new DFAState(emptyPrecedenceEdges, EmptyContextEdgeMap, new ATNConfigSet()));
+                    s0full.Set(new DFAState(emptyPrecedenceEdges, EmptyContextEdgeMap, new ATNConfigSet()));
                 }
             }
-            this.precedenceDfa = isPrecedenceDfa;
+
+            precedenceDfa = isPrecedenceDfa;
         }
 
-        public int MinDfaEdge
-        {
-            get
-            {
-                return minDfaEdge;
-            }
-        }
+        public int MinDfaEdge { get; }
 
-        public int MaxDfaEdge
-        {
-            get
-            {
-                return maxDfaEdge;
-            }
-        }
+        public int MaxDfaEdge { get; }
 
-        public virtual Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState> EmptyEdgeMap
-        {
-            get
-            {
-                return emptyEdgeMap;
-            }
-        }
+        [field: NotNull] public virtual EmptyEdgeMap<DFAState> EmptyEdgeMap { get; }
 
-        public virtual Antlr4.Runtime.Dfa.EmptyEdgeMap<DFAState> EmptyContextEdgeMap
-        {
-            get
-            {
-                return emptyContextEdgeMap;
-            }
-        }
+        [field: NotNull] public virtual EmptyEdgeMap<DFAState> EmptyContextEdgeMap { get; }
 
         /// <summary>Gets whether this DFA is a precedence DFA.</summary>
         /// <remarks>
-        /// Gets whether this DFA is a precedence DFA. Precedence DFAs use a special
-        /// start state
-        /// <see cref="s0"/>
-        /// which is not stored in
-        /// <see cref="states"/>
-        /// . The
-        /// <see cref="DFAState.edges"/>
-        /// array for this start state contains outgoing edges
-        /// supplying individual start states corresponding to specific precedence
-        /// values.
+        ///     Gets whether this DFA is a precedence DFA. Precedence DFAs use a special
+        ///     start state
+        ///     <see cref="s0" />
+        ///     which is not stored in
+        ///     <see cref="states" />
+        ///     . The
+        ///     <see cref="DFAState.edges" />
+        ///     array for this start state contains outgoing edges
+        ///     supplying individual start states corresponding to specific precedence
+        ///     values.
         /// </remarks>
         /// <returns>
-        /// 
-        /// <see langword="true"/>
-        /// if this is a precedence DFA; otherwise,
-        /// <see langword="false"/>
-        /// .
+        ///     <see langword="true" />
+        ///     if this is a precedence DFA; otherwise,
+        ///     <see langword="false" />
+        ///     .
         /// </returns>
-        /// <seealso cref="Antlr4.Runtime.Parser.Precedence()"/>
+        /// <seealso cref="Antlr4.Runtime.Parser.Precedence()" />
         /// <summary>Sets whether this is a precedence DFA.</summary>
         /// <value>
-        /// 
-        /// <see langword="true"/>
-        /// if this is a precedence DFA; otherwise,
-        /// <see langword="false"/>
+        ///     <see langword="true" />
+        ///     if this is a precedence DFA; otherwise,
+        ///     <see langword="false" />
         /// </value>
         /// <exception cref="System.NotSupportedException">
-        /// if
-        /// <c>precedenceDfa</c>
-        /// does not
-        /// match the value of
-        /// <see cref="IsPrecedenceDfa()"/>
-        /// for the current DFA.
+        ///     if
+        ///     <c>precedenceDfa</c>
+        ///     does not
+        ///     match the value of
+        ///     <see cref="IsPrecedenceDfa()" />
+        ///     for the current DFA.
         /// </exception>
         public bool IsPrecedenceDfa
         {
-            get
-            {
-                return precedenceDfa;
-            }
+            get => precedenceDfa;
 
             set
             {
@@ -183,49 +144,76 @@ namespace Antlr4.Runtime.Dfa
             }
         }
 
+        public virtual bool IsEmpty
+        {
+            get
+            {
+                if (IsPrecedenceDfa)
+                {
+                    return s0.Get().EdgeMap.Count == 0 && s0full.Get().EdgeMap.Count == 0;
+                }
+
+                return s0.Get() == null && s0full.Get() == null;
+            }
+        }
+
+        public virtual bool IsContextSensitive
+        {
+            get
+            {
+                if (IsPrecedenceDfa)
+                {
+                    return s0full.Get().EdgeMap.Count != 0;
+                }
+
+                return s0full.Get() != null;
+            }
+        }
+
         /// <summary>Get the start state for a specific precedence value.</summary>
         /// <param name="precedence">The current precedence.</param>
         /// <returns>
-        /// The start state corresponding to the specified precedence, or
-        /// <see langword="null"/>
-        /// if no start state exists for the specified precedence.
+        ///     The start state corresponding to the specified precedence, or
+        ///     <see langword="null" />
+        ///     if no start state exists for the specified precedence.
         /// </returns>
         /// <exception cref="System.InvalidOperationException">if this is not a precedence DFA.</exception>
-        /// <seealso cref="IsPrecedenceDfa()"/>
+        /// <seealso cref="IsPrecedenceDfa()" />
         public DFAState GetPrecedenceStartState(int precedence, bool fullContext)
         {
             if (!IsPrecedenceDfa)
             {
                 throw new InvalidOperationException("Only precedence DFAs may contain a precedence start state.");
             }
+
             if (fullContext)
             {
                 return s0full.Get().GetTarget(precedence);
             }
-            else
-            {
-                return s0.Get().GetTarget(precedence);
-            }
+
+            return s0.Get().GetTarget(precedence);
         }
 
         /// <summary>Set the start state for a specific precedence value.</summary>
         /// <param name="precedence">The current precedence.</param>
         /// <param name="startState">
-        /// The start state corresponding to the specified
-        /// precedence.
+        ///     The start state corresponding to the specified
+        ///     precedence.
         /// </param>
         /// <exception cref="System.InvalidOperationException">if this is not a precedence DFA.</exception>
-        /// <seealso cref="IsPrecedenceDfa()"/>
+        /// <seealso cref="IsPrecedenceDfa()" />
         public void SetPrecedenceStartState(int precedence, bool fullContext, DFAState startState)
         {
             if (!IsPrecedenceDfa)
             {
                 throw new InvalidOperationException("Only precedence DFAs may contain a precedence start state.");
             }
+
             if (precedence < 0)
             {
                 return;
             }
+
             if (fullContext)
             {
                 lock (s0full)
@@ -242,30 +230,6 @@ namespace Antlr4.Runtime.Dfa
             }
         }
 
-        public virtual bool IsEmpty
-        {
-            get
-            {
-                if (IsPrecedenceDfa)
-                {
-                    return s0.Get().EdgeMap.Count == 0 && s0full.Get().EdgeMap.Count == 0;
-                }
-                return s0.Get() == null && s0full.Get() == null;
-            }
-        }
-
-        public virtual bool IsContextSensitive
-        {
-            get
-            {
-                if (IsPrecedenceDfa)
-                {
-                    return s0full.Get().EdgeMap.Count != 0;
-                }
-                return s0full.Get() != null;
-            }
-        }
-
         public virtual DFAState AddState(DFAState state)
         {
             state.stateNumber = Interlocked.Increment(ref nextStateNumber) - 1;
@@ -277,14 +241,15 @@ namespace Antlr4.Runtime.Dfa
             return ToString(Vocabulary.EmptyVocabulary);
         }
 
-        [System.ObsoleteAttribute(@"Use ToString(Antlr4.Runtime.IVocabulary) instead.")]
-        public virtual string ToString([Nullable] string[] tokenNames)
+        [ObsoleteAttribute(@"Use ToString(Antlr4.Runtime.IVocabulary) instead.")]
+        public virtual string ToString([AllowNull] string[] tokenNames)
         {
             if (s0.Get() == null)
             {
-                return string.Empty;
+                return String.Empty;
             }
-            DFASerializer serializer = new DFASerializer(this, tokenNames);
+
+            DFASerializer serializer = new(this, tokenNames);
             return serializer.ToString();
         }
 
@@ -292,30 +257,33 @@ namespace Antlr4.Runtime.Dfa
         {
             if (s0.Get() == null)
             {
-                return string.Empty;
+                return String.Empty;
             }
-            DFASerializer serializer = new DFASerializer(this, vocabulary);
+
+            DFASerializer serializer = new(this, vocabulary);
             return serializer.ToString();
         }
 
-        [System.ObsoleteAttribute(@"Use ToString(Antlr4.Runtime.IVocabulary, string[]) instead.")]
-        public virtual string ToString([Nullable] string[] tokenNames, [Nullable] string[] ruleNames)
+        [ObsoleteAttribute(@"Use ToString(Antlr4.Runtime.IVocabulary, string[]) instead.")]
+        public virtual string ToString([AllowNull] string[] tokenNames, [AllowNull] string[] ruleNames)
         {
             if (s0.Get() == null)
             {
-                return string.Empty;
+                return String.Empty;
             }
-            DFASerializer serializer = new DFASerializer(this, tokenNames, ruleNames, atnStartState.atn);
+
+            DFASerializer serializer = new(this, tokenNames, ruleNames, atnStartState.atn);
             return serializer.ToString();
         }
 
-        public virtual string ToString([NotNull] IVocabulary vocabulary, [Nullable] string[] ruleNames)
+        public virtual string ToString([NotNull] IVocabulary vocabulary, [AllowNull] string[] ruleNames)
         {
             if (s0.Get() == null)
             {
-                return string.Empty;
+                return String.Empty;
             }
-            DFASerializer serializer = new DFASerializer(this, vocabulary, ruleNames, atnStartState.atn);
+
+            DFASerializer serializer = new(this, vocabulary, ruleNames, atnStartState.atn);
             return serializer.ToString();
         }
 
@@ -323,8 +291,9 @@ namespace Antlr4.Runtime.Dfa
         {
             if (s0.Get() == null)
             {
-                return string.Empty;
+                return String.Empty;
             }
+
             DFASerializer serializer = new LexerDFASerializer(this);
             return serializer.ToString();
         }

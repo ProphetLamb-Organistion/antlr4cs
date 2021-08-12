@@ -2,10 +2,15 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System;
-using Antlr4.Runtime;
-using Antlr4.Runtime.Dfa;
+using System.Diagnostics;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Runtime.Dfa;
+using Antlr4.Runtime.Utility;
 
 namespace Antlr4.Runtime.Atn
 {
@@ -20,88 +25,69 @@ namespace Antlr4.Runtime.Atn
 
         public const int MaxDfaEdge = 127;
 
-        public bool optimize_tail_calls = true;
+        public static int match_calls;
 
-        /// <summary>
-        /// When we hit an accept state in either the DFA or the ATN, we
-        /// have to notify the character stream to start buffering characters
-        /// via
-        /// <see cref="Antlr4.Runtime.IIntStream.Mark()"/>
-        /// and record the current state. The current sim state
-        /// includes the current index into the input, the current line,
-        /// and current character position in that line. Note that the Lexer is
-        /// tracking the starting line and characterization of the token. These
-        /// variables track the "state" of the simulator when it hits an accept state.
-        /// <p>We track these variables separately for the DFA and ATN simulation
-        /// because the DFA simulation often has to fail over to the ATN
-        /// simulation. If the ATN simulation fails, we need the DFA to fall
-        /// back to its previously accepted state, if any. If the ATN succeeds,
-        /// then the ATN does the accept and the DFA simulator that invoked it
-        /// can simply return the predicted token type.</p>
-        /// </summary>
-        protected internal class SimState
-        {
-            protected internal int index = -1;
+        /// <summary>Used during DFA/ATN exec to record the most recent accept configuration info</summary>
+        [NotNull] protected internal readonly SimState prevAccept = new();
 
-            protected internal int line = 0;
+        [MaybeNull] protected internal readonly Lexer recog;
 
-            protected internal int charPos = -1;
-
-            protected internal DFAState dfaState;
-
-            // forces unicode to stay in ATN
-            protected internal virtual void Reset()
-            {
-                index = -1;
-                line = 0;
-                charPos = -1;
-                dfaState = null;
-            }
-        }
-
-        [Nullable]
-        protected internal readonly Lexer recog;
-
-        /// <summary>The current token's starting index into the character stream.</summary>
-        /// <remarks>
-        /// The current token's starting index into the character stream.
-        /// Shared across DFA to ATN simulation in case the ATN fails and the
-        /// DFA did not have a previous accept state. In this case, we use the
-        /// ATN-generated exception object.
-        /// </remarks>
-        protected internal int startIndex = -1;
+        /// <summary>The index of the character relative to the beginning of the line 0..n-1</summary>
+        protected internal int charPositionInLine;
 
         /// <summary>line number 1..n within the input</summary>
         protected internal int line = 1;
 
-        /// <summary>The index of the character relative to the beginning of the line 0..n-1</summary>
-        protected internal int charPositionInLine = 0;
-
         protected internal int mode = Lexer.DefaultMode;
 
-        /// <summary>Used during DFA/ATN exec to record the most recent accept configuration info</summary>
-        [NotNull]
-        protected internal readonly LexerATNSimulator.SimState prevAccept = new LexerATNSimulator.SimState();
+        public bool optimize_tail_calls = true;
 
-        public static int match_calls = 0;
+        /// <summary>The current token's starting index into the character stream.</summary>
+        /// <remarks>
+        ///     The current token's starting index into the character stream.
+        ///     Shared across DFA to ATN simulation in case the ATN fails and the
+        ///     DFA did not have a previous accept state. In this case, we use the
+        ///     ATN-generated exception object.
+        /// </remarks>
+        protected internal int startIndex = -1;
 
         public LexerATNSimulator([NotNull] ATN atn)
             : this(null, atn)
         {
         }
 
-        public LexerATNSimulator([Nullable] Lexer recog, [NotNull] ATN atn)
+        public LexerATNSimulator([AllowNull] Lexer recog, [NotNull] ATN atn)
             : base(atn)
         {
             this.recog = recog;
         }
 
+        public virtual int Line
+        {
+            get => line;
+            set
+            {
+                int line = value;
+                this.line = line;
+            }
+        }
+
+        public virtual int Column
+        {
+            get => charPositionInLine;
+            set
+            {
+                int charPositionInLine = value;
+                this.charPositionInLine = charPositionInLine;
+            }
+        }
+
         public virtual void CopyState([NotNull] LexerATNSimulator simulator)
         {
-            this.charPositionInLine = simulator.charPositionInLine;
-            this.line = simulator.line;
-            this.mode = simulator.mode;
-            this.startIndex = simulator.startIndex;
+            charPositionInLine = simulator.charPositionInLine;
+            line = simulator.line;
+            mode = simulator.mode;
+            startIndex = simulator.startIndex;
         }
 
         public virtual int Match([NotNull] ICharStream input, int mode)
@@ -111,8 +97,8 @@ namespace Antlr4.Runtime.Atn
             int mark = input.Mark();
             try
             {
-                this.startIndex = input.Index;
-                this.prevAccept.Reset();
+                startIndex = input.Index;
+                prevAccept.Reset();
                 DFAState s0 = atn.modeToDFA[mode].s0.Get();
                 if (s0 == null)
                 {
@@ -148,6 +134,7 @@ namespace Antlr4.Runtime.Atn
             {
                 s0_closure.ClearExplicitSemanticContext();
             }
+
             DFAState next = AddDFAState(s0_closure);
             if (!suppressEdge)
             {
@@ -156,6 +143,7 @@ namespace Antlr4.Runtime.Atn
                     next = atn.modeToDFA[mode].s0.Get();
                 }
             }
+
             int predict = ExecATN(input, next);
             return predict;
         }
@@ -168,6 +156,7 @@ namespace Antlr4.Runtime.Atn
                 // allow zero-length tokens
                 CaptureSimState(prevAccept, input, ds0);
             }
+
             int t = input.La(1);
             DFAState s = ds0;
             // s is current/from DFA state
@@ -196,10 +185,12 @@ namespace Antlr4.Runtime.Atn
                 {
                     target = ComputeTargetState(input, s, t);
                 }
+
                 if (target == Error)
                 {
                     break;
                 }
+
                 // If this is a consumable input element, make sure to consume before
                 // capturing the accept state so the input index, line, and char
                 // position accurately reflect the state of the interpreter at the
@@ -208,6 +199,7 @@ namespace Antlr4.Runtime.Atn
                 {
                     Consume(input);
                 }
+
                 if (target.IsAcceptState)
                 {
                     CaptureSimState(prevAccept, input, target);
@@ -216,60 +208,62 @@ namespace Antlr4.Runtime.Atn
                         break;
                     }
                 }
+
                 t = input.La(1);
                 s = target;
             }
+
             // flip; current DFA target becomes new src/from state
             return FailOrAccept(prevAccept, input, s.configs, t);
         }
 
         /// <summary>Get an existing target state for an edge in the DFA.</summary>
         /// <remarks>
-        /// Get an existing target state for an edge in the DFA. If the target state
-        /// for the edge has not yet been computed or is otherwise not available,
-        /// this method returns
-        /// <see langword="null"/>
-        /// .
+        ///     Get an existing target state for an edge in the DFA. If the target state
+        ///     for the edge has not yet been computed or is otherwise not available,
+        ///     this method returns
+        ///     <see langword="null" />
+        ///     .
         /// </remarks>
         /// <param name="s">The current DFA state</param>
         /// <param name="t">The next input symbol</param>
         /// <returns>
-        /// The existing target DFA state for the given input symbol
-        /// <paramref name="t"/>
-        /// , or
-        /// <see langword="null"/>
-        /// if the target state for this edge is not
-        /// already cached
+        ///     The existing target DFA state for the given input symbol
+        ///     <paramref name="t" />
+        ///     , or
+        ///     <see langword="null" />
+        ///     if the target state for this edge is not
+        ///     already cached
         /// </returns>
-        [return: Nullable]
+        [return: MaybeNull]
         protected internal virtual DFAState GetExistingTargetState([NotNull] DFAState s, int t)
         {
             DFAState target = s.GetTarget(t);
-#if !LEGACY || !PORTABLE || NETSTANDARD2_0 || NETSTANDARD2_1
+#if !LEGACY || !NETSTANDARD1_5 || NETSTANDARD2_0 || NETSTANDARD2_1
             if (debug && target != null)
             {
-                System.Console.Out.WriteLine("reuse state " + s.stateNumber + " edge to " + target.stateNumber);
+                Console.Out.WriteLine("reuse state " + s.stateNumber + " edge to " + target.stateNumber);
             }
 #endif
             return target;
         }
 
         /// <summary>
-        /// Compute a target state for an edge in the DFA, and attempt to add the
-        /// computed state and corresponding edge to the DFA.
+        ///     Compute a target state for an edge in the DFA, and attempt to add the
+        ///     computed state and corresponding edge to the DFA.
         /// </summary>
         /// <param name="input">The input stream</param>
         /// <param name="s">The current DFA state</param>
         /// <param name="t">The next input symbol</param>
         /// <returns>
-        /// The computed target DFA state for the given input symbol
-        /// <paramref name="t"/>
-        /// . If
-        /// <paramref name="t"/>
-        /// does not lead to a valid DFA state, this method
-        /// returns
-        /// <see cref="ATNSimulator.Error"/>
-        /// .
+        ///     The computed target DFA state for the given input symbol
+        ///     <paramref name="t" />
+        ///     . If
+        ///     <paramref name="t" />
+        ///     does not lead to a valid DFA state, this method
+        ///     returns
+        ///     <see cref="ATNSimulator.Error" />
+        ///     .
         /// </returns>
         [return: NotNull]
         protected internal virtual DFAState ComputeTargetState([NotNull] ICharStream input, [NotNull] DFAState s, int t)
@@ -287,14 +281,16 @@ namespace Antlr4.Runtime.Atn
                     // cause a failover from DFA later.
                     AddDFAEdge(s, t, Error);
                 }
+
                 // stop when we can't match any more char
                 return Error;
             }
+
             // Add an edge from s to target DFA found/created for reach
             return AddDFAEdge(s, t, reach);
         }
 
-        protected internal virtual int FailOrAccept(LexerATNSimulator.SimState prevAccept, ICharStream input, ATNConfigSet reach, int t)
+        protected internal virtual int FailOrAccept(SimState prevAccept, ICharStream input, ATNConfigSet reach, int t)
         {
             if (prevAccept.dfaState != null)
             {
@@ -302,25 +298,24 @@ namespace Antlr4.Runtime.Atn
                 Accept(input, lexerActionExecutor, startIndex, prevAccept.index, prevAccept.line, prevAccept.charPos);
                 return prevAccept.dfaState.Prediction;
             }
-            else
+
+            // if no accept and EOF is first char, return EOF
+            if (t == IntStreamConstants.Eof && input.Index == startIndex)
             {
-                // if no accept and EOF is first char, return EOF
-                if (t == IntStreamConstants.Eof && input.Index == startIndex)
-                {
-                    return TokenConstants.Eof;
-                }
-                throw new LexerNoViableAltException(recog, input, startIndex, reach);
+                return TokenConstants.Eof;
             }
+
+            throw new LexerNoViableAltException(recog, input, startIndex, reach);
         }
 
         /// <summary>
-        /// Given a starting configuration set, figure out all ATN configurations
-        /// we can reach upon input
-        /// <paramref name="t"/>
-        /// . Parameter
-        /// <paramref name="reach"/>
-        /// is a return
-        /// parameter.
+        ///     Given a starting configuration set, figure out all ATN configurations
+        ///     we can reach upon input
+        ///     <paramref name="t" />
+        ///     . Parameter
+        ///     <paramref name="reach" />
+        ///     is a return
+        ///     parameter.
         /// </summary>
         protected internal virtual void GetReachableConfigSet([NotNull] ICharStream input, [NotNull] ATNConfigSet closure, [NotNull] ATNConfigSet reach, int t)
         {
@@ -334,8 +329,11 @@ namespace Antlr4.Runtime.Atn
                 {
                     continue;
                 }
+
                 int n = c.State.NumberOfOptimizedTransitions;
-                for (int ti = 0; ti < n; ti++)
+                for (int ti = 0;
+                    ti < n;
+                    ti++)
                 {
                     // for each optimized transition
                     Transition trans = c.State.GetOptimizedTransition(ti);
@@ -347,6 +345,7 @@ namespace Antlr4.Runtime.Atn
                         {
                             lexerActionExecutor = lexerActionExecutor.FixOffsetBeforeMatch(input.Index - startIndex);
                         }
+
                         bool treatEofAsEpsilon = t == IntStreamConstants.Eof;
                         if (Closure(input, c.Transform(target, lexerActionExecutor, true), reach, currentAltReachedAcceptState, true, treatEofAsEpsilon))
                         {
@@ -365,20 +364,21 @@ namespace Antlr4.Runtime.Atn
             // seek to after last char in token
             input.Seek(index);
             this.line = line;
-            this.charPositionInLine = charPos;
+            charPositionInLine = charPos;
             if (lexerActionExecutor != null && recog != null)
             {
                 lexerActionExecutor.Execute(recog, input, startIndex);
             }
         }
 
-        [return: Nullable]
+        [return: MaybeNull]
         protected internal virtual ATNState GetReachableTarget(Transition trans, int t)
         {
-            if (trans.Matches(t, char.MinValue, char.MaxValue))
+            if (trans.Matches(t, Char.MinValue, Char.MaxValue))
             {
                 return trans.target;
             }
+
             return null;
         }
 
@@ -387,37 +387,40 @@ namespace Antlr4.Runtime.Atn
         {
             PredictionContext initialContext = PredictionContext.EmptyFull;
             ATNConfigSet configs = new OrderedATNConfigSet();
-            for (int i = 0; i < p.NumberOfTransitions; i++)
+            for (int i = 0;
+                i < p.NumberOfTransitions;
+                i++)
             {
                 ATNState target = p.Transition(i).target;
                 ATNConfig c = ATNConfig.Create(target, i + 1, initialContext);
                 Closure(input, c, configs, false, false, false);
             }
+
             return configs;
         }
 
         /// <summary>
-        /// Since the alternatives within any lexer decision are ordered by
-        /// preference, this method stops pursuing the closure as soon as an accept
-        /// state is reached.
+        ///     Since the alternatives within any lexer decision are ordered by
+        ///     preference, this method stops pursuing the closure as soon as an accept
+        ///     state is reached.
         /// </summary>
         /// <remarks>
-        /// Since the alternatives within any lexer decision are ordered by
-        /// preference, this method stops pursuing the closure as soon as an accept
-        /// state is reached. After the first accept state is reached by depth-first
-        /// search from
-        /// <paramref name="config"/>
-        /// , all other (potentially reachable) states for
-        /// this rule would have a lower priority.
+        ///     Since the alternatives within any lexer decision are ordered by
+        ///     preference, this method stops pursuing the closure as soon as an accept
+        ///     state is reached. After the first accept state is reached by depth-first
+        ///     search from
+        ///     <paramref name="config" />
+        ///     , all other (potentially reachable) states for
+        ///     this rule would have a lower priority.
         /// </remarks>
         /// <returns>
-        /// 
-        /// <see langword="true"/>
-        /// if an accept state is reached, otherwise
-        /// <see langword="false"/>
-        /// .
+        ///     <see langword="true" />
+        ///     if an accept state is reached, otherwise
+        ///     <see langword="false" />
+        ///     .
         /// </returns>
-        protected internal virtual bool Closure([NotNull] ICharStream input, [NotNull] ATNConfig config, [NotNull] ATNConfigSet configs, bool currentAltReachedAcceptState, bool speculative, bool treatEofAsEpsilon)
+        protected internal virtual bool Closure([NotNull] ICharStream input, [NotNull] ATNConfig config, [NotNull] ATNConfigSet configs, bool currentAltReachedAcceptState,
+            bool speculative, bool treatEofAsEpsilon)
         {
             if (config.State is RuleStopState)
             {
@@ -427,29 +430,33 @@ namespace Antlr4.Runtime.Atn
                     configs.Add(config);
                     return true;
                 }
-                else
+
+                if (context.HasEmpty)
                 {
-                    if (context.HasEmpty)
-                    {
-                        configs.Add(config.Transform(config.State, PredictionContext.EmptyFull, true));
-                        currentAltReachedAcceptState = true;
-                    }
+                    configs.Add(config.Transform(config.State, PredictionContext.EmptyFull, true));
+                    currentAltReachedAcceptState = true;
                 }
-                for (int i = 0; i < context.Size; i++)
+
+                for (int i = 0;
+                    i < context.Size;
+                    i++)
                 {
                     int returnStateNumber = context.GetReturnState(i);
                     if (returnStateNumber == PredictionContext.EmptyFullStateKey)
                     {
                         continue;
                     }
+
                     PredictionContext newContext = context.GetParent(i);
                     // "pop" return state
                     ATNState returnState = atn.states[returnStateNumber];
                     ATNConfig c = config.Transform(returnState, newContext, false);
                     currentAltReachedAcceptState = Closure(input, c, configs, currentAltReachedAcceptState, speculative, treatEofAsEpsilon);
                 }
+
                 return currentAltReachedAcceptState;
             }
+
             // optimization
             if (!config.State.OnlyHasEpsilonTransitions)
             {
@@ -458,8 +465,11 @@ namespace Antlr4.Runtime.Atn
                     configs.Add(config);
                 }
             }
+
             ATNState p = config.State;
-            for (int i_1 = 0; i_1 < p.NumberOfOptimizedTransitions; i_1++)
+            for (int i_1 = 0;
+                i_1 < p.NumberOfOptimizedTransitions;
+                i_1++)
             {
                 Transition t = p.GetOptimizedTransition(i_1);
                 ATNConfig c = GetEpsilonTarget(input, config, t, configs, speculative, treatEofAsEpsilon);
@@ -468,19 +478,21 @@ namespace Antlr4.Runtime.Atn
                     currentAltReachedAcceptState = Closure(input, c, configs, currentAltReachedAcceptState, speculative, treatEofAsEpsilon);
                 }
             }
+
             return currentAltReachedAcceptState;
         }
 
         // side-effect: can alter configs.hasSemanticContext
-        [return: Nullable]
-        protected internal virtual ATNConfig GetEpsilonTarget([NotNull] ICharStream input, [NotNull] ATNConfig config, [NotNull] Transition t, [NotNull] ATNConfigSet configs, bool speculative, bool treatEofAsEpsilon)
+        [return: MaybeNull]
+        protected internal virtual ATNConfig GetEpsilonTarget([NotNull] ICharStream input, [NotNull] ATNConfig config, [NotNull] Transition t, [NotNull] ATNConfigSet configs,
+            bool speculative, bool treatEofAsEpsilon)
         {
             ATNConfig c;
             switch (t.TransitionType)
             {
                 case TransitionType.Rule:
                 {
-                    RuleTransition ruleTransition = (RuleTransition)t;
+                    RuleTransition ruleTransition = (RuleTransition) t;
                     if (optimize_tail_calls && ruleTransition.optimizedTailCall && !config.Context.HasEmpty)
                     {
                         c = config.Transform(t.target, true);
@@ -490,6 +502,7 @@ namespace Antlr4.Runtime.Atn
                         PredictionContext newContext = config.Context.GetChild(ruleTransition.followState.stateNumber);
                         c = config.Transform(t.target, newContext, true);
                     }
+
                     break;
                 }
 
@@ -500,25 +513,25 @@ namespace Antlr4.Runtime.Atn
 
                 case TransitionType.Predicate:
                 {
-			/*  Track traversing semantic predicates. If we traverse,
-			    we cannot add a DFA state for this "reach" computation
-				because the DFA would not test the predicate again in the
-				future. Rather than creating collections of semantic predicates
-				like v3 and testing them on prediction, v4 will test them on the
-				fly all the time using the ATN not the DFA. This is slower but
-				semantically it's not used that often. One of the key elements to
-				this predicate mechanism is not adding DFA states that see
-				predicates immediately afterwards in the ATN. For example,
-
-				a : ID {p1}? | ID {p2}? ;
-
-				should create the start state for rule 'a' (to save start state
-				competition), but should not create target of ID state. The
-				collection of ATN states the following ID references includes
-				states reached by traversing predicates. Since this is when we
-				test them, we cannot cash the DFA state target of ID.
-			*/
-                    PredicateTransition pt = (PredicateTransition)t;
+                    /*  Track traversing semantic predicates. If we traverse,
+                        we cannot add a DFA state for this "reach" computation
+                        because the DFA would not test the predicate again in the
+                        future. Rather than creating collections of semantic predicates
+                        like v3 and testing them on prediction, v4 will test them on the
+                        fly all the time using the ATN not the DFA. This is slower but
+                        semantically it's not used that often. One of the key elements to
+                        this predicate mechanism is not adding DFA states that see
+                        predicates immediately afterwards in the ATN. For example,
+        
+                        a : ID {p1}? | ID {p2}? ;
+        
+                        should create the start state for rule 'a' (to save start state
+                        competition), but should not create target of ID state. The
+                        collection of ATN states the following ID references includes
+                        states reached by traversing predicates. Since this is when we
+                        test them, we cannot cash the DFA state target of ID.
+                    */
+                    PredicateTransition pt = (PredicateTransition) t;
                     configs.MarkExplicitSemanticContext();
                     if (EvaluatePredicate(input, pt.ruleIndex, pt.predIndex, speculative))
                     {
@@ -528,6 +541,7 @@ namespace Antlr4.Runtime.Atn
                     {
                         c = null;
                     }
+
                     break;
                 }
 
@@ -547,16 +561,14 @@ namespace Antlr4.Runtime.Atn
                         // getEpsilonTarget to return two configurations, so
                         // additional modifications are needed before we can support
                         // the split operation.
-                        LexerActionExecutor lexerActionExecutor = LexerActionExecutor.Append(config.ActionExecutor, atn.lexerActions[((ActionTransition)t).actionIndex]);
+                        LexerActionExecutor lexerActionExecutor = LexerActionExecutor.Append(config.ActionExecutor, atn.lexerActions[((ActionTransition) t).actionIndex]);
                         c = config.Transform(t.target, lexerActionExecutor, true);
                         break;
                     }
-                    else
-                    {
-                        // ignore actions in referenced rules
-                        c = config.Transform(t.target, true);
-                        break;
-                    }
+
+                    // ignore actions in referenced rules
+                    c = config.Transform(t.target, true);
+                    break;
                 }
 
                 case TransitionType.Epsilon:
@@ -571,12 +583,13 @@ namespace Antlr4.Runtime.Atn
                 {
                     if (treatEofAsEpsilon)
                     {
-                        if (t.Matches(IntStreamConstants.Eof, char.MinValue, char.MaxValue))
+                        if (t.Matches(IntStreamConstants.Eof, Char.MinValue, Char.MaxValue))
                         {
                             c = config.Transform(t.target, false);
                             break;
                         }
                     }
+
                     c = null;
                     break;
                 }
@@ -587,54 +600,55 @@ namespace Antlr4.Runtime.Atn
                     break;
                 }
             }
+
             return c;
         }
 
         /// <summary>Evaluate a predicate specified in the lexer.</summary>
         /// <remarks>
-        /// Evaluate a predicate specified in the lexer.
-        /// <p>If
-        /// <paramref name="speculative"/>
-        /// is
-        /// <see langword="true"/>
-        /// , this method was called before
-        /// <see cref="Consume(Antlr4.Runtime.ICharStream)"/>
-        /// for the matched character. This method should call
-        /// <see cref="Consume(Antlr4.Runtime.ICharStream)"/>
-        /// before evaluating the predicate to ensure position
-        /// sensitive values, including
-        /// <see cref="Antlr4.Runtime.Lexer.Text()"/>
-        /// ,
-        /// <see cref="Antlr4.Runtime.Lexer.Line()"/>
-        /// ,
-        /// and
-        /// <see cref="Antlr4.Runtime.Lexer.Column()"/>
-        /// , properly reflect the current
-        /// lexer state. This method should restore
-        /// <paramref name="input"/>
-        /// and the simulator
-        /// to the original state before returning (i.e. undo the actions made by the
-        /// call to
-        /// <see cref="Consume(Antlr4.Runtime.ICharStream)"/>
-        /// .</p>
+        ///     Evaluate a predicate specified in the lexer.
+        ///     <p>
+        ///         If
+        ///         <paramref name="speculative" />
+        ///         is
+        ///         <see langword="true" />
+        ///         , this method was called before
+        ///         <see cref="Consume(Antlr4.Runtime.ICharStream)" />
+        ///         for the matched character. This method should call
+        ///         <see cref="Consume(Antlr4.Runtime.ICharStream)" />
+        ///         before evaluating the predicate to ensure position
+        ///         sensitive values, including
+        ///         <see cref="Antlr4.Runtime.Lexer.Text()" />
+        ///         ,
+        ///         <see cref="Antlr4.Runtime.Lexer.Line()" />
+        ///         ,
+        ///         and
+        ///         <see cref="Antlr4.Runtime.Lexer.Column()" />
+        ///         , properly reflect the current
+        ///         lexer state. This method should restore
+        ///         <paramref name="input" />
+        ///         and the simulator
+        ///         to the original state before returning (i.e. undo the actions made by the
+        ///         call to
+        ///         <see cref="Consume(Antlr4.Runtime.ICharStream)" />
+        ///         .
+        ///     </p>
         /// </remarks>
         /// <param name="input">The input stream.</param>
         /// <param name="ruleIndex">The rule containing the predicate.</param>
         /// <param name="predIndex">The index of the predicate within the rule.</param>
         /// <param name="speculative">
-        /// 
-        /// <see langword="true"/>
-        /// if the current index in
-        /// <paramref name="input"/>
-        /// is
-        /// one character before the predicate's location.
+        ///     <see langword="true" />
+        ///     if the current index in
+        ///     <paramref name="input" />
+        ///     is
+        ///     one character before the predicate's location.
         /// </param>
         /// <returns>
-        /// 
-        /// <see langword="true"/>
-        /// if the specified predicate evaluates to
-        /// <see langword="true"/>
-        /// .
+        ///     <see langword="true" />
+        ///     if the specified predicate evaluates to
+        ///     <see langword="true" />
+        ///     .
         /// </returns>
         protected internal virtual bool EvaluatePredicate([NotNull] ICharStream input, int ruleIndex, int predIndex, bool speculative)
         {
@@ -643,10 +657,12 @@ namespace Antlr4.Runtime.Atn
             {
                 return true;
             }
+
             if (!speculative)
             {
                 return recog.Sempred(null, ruleIndex, predIndex);
             }
+
             int savedCharPositionInLine = charPositionInLine;
             int savedLine = line;
             int index = input.Index;
@@ -665,7 +681,7 @@ namespace Antlr4.Runtime.Atn
             }
         }
 
-        protected internal virtual void CaptureSimState([NotNull] LexerATNSimulator.SimState settings, [NotNull] ICharStream input, [NotNull] DFAState dfaState)
+        protected internal virtual void CaptureSimState([NotNull] SimState settings, [NotNull] ICharStream input, [NotNull] DFAState dfaState)
         {
             settings.index = input.Index;
             settings.line = line;
@@ -692,11 +708,13 @@ namespace Antlr4.Runtime.Atn
             {
                 q.ClearExplicitSemanticContext();
             }
+
             DFAState to = AddDFAState(q);
             if (suppressEdge)
             {
                 return to;
             }
+
             AddDFAEdge(from, t, to);
             return to;
         }
@@ -710,14 +728,14 @@ namespace Antlr4.Runtime.Atn
         }
 
         /// <summary>
-        /// Add a new DFA state if there isn't one with this set of
-        /// configurations already.
+        ///     Add a new DFA state if there isn't one with this set of
+        ///     configurations already.
         /// </summary>
         /// <remarks>
-        /// Add a new DFA state if there isn't one with this set of
-        /// configurations already. This method also detects the first
-        /// configuration containing an ATN rule stop state. Later, when
-        /// traversing the DFA, we will know which rule to accept.
+        ///     Add a new DFA state if there isn't one with this set of
+        ///     configurations already. This method also detects the first
+        ///     configuration containing an ATN rule stop state. Later, when
+        ///     traversing the DFA, we will know which rule to accept.
         /// </remarks>
         [return: NotNull]
         protected internal virtual DFAState AddDFAState([NotNull] ATNConfigSet configs)
@@ -725,15 +743,16 @@ namespace Antlr4.Runtime.Atn
             /* the lexer evaluates predicates on-the-fly; by this point configs
              * should not contain any configurations with unevaluated predicates.
              */
-            System.Diagnostics.Debug.Assert(!configs.HasSemanticContext);
-            DFAState proposed = new DFAState(atn.modeToDFA[mode], configs);
+            Debug.Assert(!configs.HasSemanticContext);
+            DFAState proposed = new(atn.modeToDFA[mode], configs);
             DFAState existing;
             if (atn.modeToDFA[mode].states.TryGetValue(proposed, out existing))
             {
                 return existing;
             }
+
             configs.OptimizeConfigs(this);
-            DFAState newState = new DFAState(atn.modeToDFA[mode], configs.Clone(true));
+            DFAState newState = new(atn.modeToDFA[mode], configs.Clone(true));
             ATNConfig firstConfigWithRuleStopState = null;
             foreach (ATNConfig c in configs)
             {
@@ -743,12 +762,14 @@ namespace Antlr4.Runtime.Atn
                     break;
                 }
             }
+
             if (firstConfigWithRuleStopState != null)
             {
                 int prediction = atn.ruleToTokenType[firstConfigWithRuleStopState.State.ruleIndex];
                 LexerActionExecutor lexerActionExecutor = firstConfigWithRuleStopState.ActionExecutor;
                 newState.AcceptStateInfo = new AcceptStateInfo(prediction, lexerActionExecutor);
             }
+
             return atn.modeToDFA[mode].AddState(newState);
         }
 
@@ -766,32 +787,6 @@ namespace Antlr4.Runtime.Atn
             return input.GetText(Interval.Of(startIndex, input.Index - 1));
         }
 
-        public virtual int Line
-        {
-            get
-            {
-                return line;
-            }
-            set
-            {
-                int line = value;
-                this.line = line;
-            }
-        }
-
-        public virtual int Column
-        {
-            get
-            {
-                return charPositionInLine;
-            }
-            set
-            {
-                int charPositionInLine = value;
-                this.charPositionInLine = charPositionInLine;
-            }
-        }
-
         public virtual void Consume([NotNull] ICharStream input)
         {
             int curChar = input.La(1);
@@ -804,6 +799,7 @@ namespace Antlr4.Runtime.Atn
             {
                 charPositionInLine++;
             }
+
             input.Consume();
         }
 
@@ -814,8 +810,47 @@ namespace Antlr4.Runtime.Atn
             {
                 return "EOF";
             }
+
             //if ( atn.g!=null ) return atn.g.getTokenDisplayName(t);
-            return "'" + (char)t + "'";
+            return "'" + (char) t + "'";
+        }
+
+        /// <summary>
+        ///     When we hit an accept state in either the DFA or the ATN, we
+        ///     have to notify the character stream to start buffering characters
+        ///     via
+        ///     <see cref="Antlr4.Runtime.IIntStream.Mark()" />
+        ///     and record the current state. The current sim state
+        ///     includes the current index into the input, the current line,
+        ///     and current character position in that line. Note that the Lexer is
+        ///     tracking the starting line and characterization of the token. These
+        ///     variables track the "state" of the simulator when it hits an accept state.
+        ///     <p>
+        ///         We track these variables separately for the DFA and ATN simulation
+        ///         because the DFA simulation often has to fail over to the ATN
+        ///         simulation. If the ATN simulation fails, we need the DFA to fall
+        ///         back to its previously accepted state, if any. If the ATN succeeds,
+        ///         then the ATN does the accept and the DFA simulator that invoked it
+        ///         can simply return the predicted token type.
+        ///     </p>
+        /// </summary>
+        protected internal class SimState
+        {
+            protected internal int charPos = -1;
+
+            protected internal DFAState dfaState;
+            protected internal int index = -1;
+
+            protected internal int line;
+
+            // forces unicode to stay in ATN
+            protected internal virtual void Reset()
+            {
+                index = -1;
+                line = 0;
+                charPos = -1;
+                dfaState = null;
+            }
         }
     }
 }

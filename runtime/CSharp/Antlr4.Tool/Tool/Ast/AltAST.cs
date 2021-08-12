@@ -1,31 +1,36 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using Antlr4.Analysis;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
+
 namespace Antlr4.Tool.Ast
 {
-    using Antlr.Runtime;
-    using Antlr4.Analysis;
-    using ITree = Antlr.Runtime.Tree.ITree;
-
-    /** Any ALT (which can be child of ALT_REWRITE node) */
+    /**
+     * Any ALT (which can be child of ALT_REWRITE node)
+     */
     public class AltAST : GrammarASTWithOptions
     {
         public Alternative alt;
 
-        /** If we transformed this alt from a left-recursive one, need info on it */
-        public LeftRecursiveRuleAltInfo leftRecursiveAltInfo;
-
-        /** If someone specified an outermost alternative label with #foo.
-         *  Token type will be ID.
+        /**
+         * If someone specified an outermost alternative label with #foo.
+         * Token type will be ID.
          */
         public GrammarAST altLabel;
+
+        /**
+         * If we transformed this alt from a left-recursive one, need info on it
+         */
+        public LeftRecursiveRuleAltInfo leftRecursiveAltInfo;
 
         public AltAST(AltAST node)
             : base(node)
         {
-            this.alt = node.alt;
-            this.altLabel = node.altLabel;
-            this.leftRecursiveAltInfo = node.leftRecursiveAltInfo;
+            alt = node.alt;
+            altLabel = node.altLabel;
+            leftRecursiveAltInfo = node.leftRecursiveAltInfo;
         }
 
         public AltAST(IToken t)

@@ -1,9 +1,13 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-using Antlr4.Runtime;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime.Dfa
 {
@@ -17,7 +21,7 @@ namespace Antlr4.Runtime.Dfa
         [return: NotNull]
         protected internal override string GetEdgeLabel(int i)
         {
-            return "'" + (char)i + "'";
+            return "'" + (char) i + "'";
         }
     }
 }

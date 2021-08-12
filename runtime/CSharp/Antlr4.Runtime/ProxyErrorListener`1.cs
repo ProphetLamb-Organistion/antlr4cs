@@ -3,17 +3,22 @@
 
 using System;
 using System.Collections.Generic;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime
 {
     /// <summary>
-    /// This implementation of
-    /// <see cref="IAntlrErrorListener{Symbol}"/>
-    /// dispatches all calls to a
-    /// collection of delegate listeners. This reduces the effort required to support multiple
-    /// listeners.
+    ///     This implementation of
+    ///     <see cref="IAntlrErrorListener{Symbol}" />
+    ///     dispatches all calls to a
+    ///     collection of delegate listeners. This reduces the effort required to support multiple
+    ///     listeners.
     /// </summary>
     /// <author>Sam Harwell</author>
     public class ProxyErrorListener<Symbol> : IAntlrErrorListener<Symbol>
@@ -26,18 +31,14 @@ namespace Antlr4.Runtime
             {
                 throw new ArgumentNullException("delegates");
             }
+
             this.delegates = delegates;
         }
 
-        protected internal virtual IEnumerable<IAntlrErrorListener<Symbol>> Delegates
-        {
-            get
-            {
-                return delegates;
-            }
-        }
+        protected internal virtual IEnumerable<IAntlrErrorListener<Symbol>> Delegates => delegates;
 
-        public virtual void SyntaxError([NotNull] IRecognizer recognizer, [Nullable] Symbol offendingSymbol, int line, int charPositionInLine, [NotNull] string msg, [Nullable] RecognitionException e)
+        public virtual void SyntaxError([NotNull] IRecognizer recognizer, [AllowNull] Symbol offendingSymbol, int line, int charPositionInLine, [NotNull] string msg,
+            [AllowNull] RecognitionException e)
         {
             foreach (IAntlrErrorListener<Symbol> listener in delegates)
             {

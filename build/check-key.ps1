@@ -26,6 +26,6 @@ if (-not $Build) {
 
 $actual = Get-PublicKeyToken -assembly $Assembly
 if ($actual -ne $ExpectedKey) {
-	$host.ui.WriteErrorLine("Invalid publicKeyToken for '$Build'; expected '$ExpectedKey' but found '$actual'")
+	Write-Error "Invalid publicKeyToken for '$Build'; expected '$ExpectedKey' but found '$actual'"
 	exit 1
 }

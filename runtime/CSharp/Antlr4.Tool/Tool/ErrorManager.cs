@@ -1,38 +1,38 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+using Antlr4.Runtime;
+
 namespace Antlr4.Tool
 {
-    using System.Collections.Generic;
-    using System.Globalization;
-    using System.Linq;
-    using System.Reflection;
-    using System.Text;
-    using Antlr4.StringTemplate;
-    using ErrorBuffer = Antlr4.StringTemplate.Misc.ErrorBuffer;
-    using Exception = System.Exception;
-    using File = System.IO.File;
-    using Path = System.IO.Path;
-    using StringSplitOptions = System.StringSplitOptions;
-    using Uri = System.Uri;
-
     public class ErrorManager
     {
-        public AntlrTool tool;
         public int errors;
-        public int warnings;
 
-        /** All errors that have been generated */
+        /**
+         * All errors that have been generated
+         */
         public ISet<ErrorType> errorTypes = new HashSet<ErrorType>();
 
-        /** The group of templates that represent the current message format. */
-        TemplateGroup format;
+        /**
+         * The group of templates that represent the current message format.
+         */
+        private TemplateGroup format;
 
         /////** Messages should be sensitive to the locale. */
         ////CultureInfo locale;
-        string formatName;
+        private string formatName;
 
-        ErrorBuffer initSTListener = new ErrorBuffer();
+        private readonly ErrorBuffer initSTListener = new();
+        public AntlrTool tool;
+        public int warnings;
 
         public ErrorManager(AntlrTool tool)
         {
@@ -43,7 +43,7 @@ namespace Antlr4.Tool
         {
             get
             {
-                string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.CodeBase).LocalPath;
+                string codeBaseLocation = new Uri(typeof(AntlrTool).GetTypeInfo().Assembly.Location).LocalPath;
                 string baseDirectory = Path.GetDirectoryName(codeBaseLocation);
                 return Path.Combine(baseDirectory, "Tool", "Templates", "Messages", "Formats");
             }
@@ -68,11 +68,13 @@ namespace Antlr4.Tool
                 locationST.Add("line", msg.line);
                 locationValid = true;
             }
+
             if (msg.charPosition != -1)
             {
                 locationST.Add("column", msg.charPosition);
                 locationValid = true;
             }
+
             if (msg.fileName != null)
             {
                 string f = msg.fileName;
@@ -82,6 +84,7 @@ namespace Antlr4.Tool
                 {
                     displayFileName = Path.GetFileName(f);
                 }
+
                 locationST.Add("file", displayFileName);
                 locationValid = true;
             }
@@ -90,14 +93,18 @@ namespace Antlr4.Tool
             messageFormatST.Add("text", messageST);
 
             if (locationValid)
+            {
                 reportST.Add("location", locationST);
+            }
+
             reportST.Add("message", messageFormatST);
             //((DebugST)reportST).inspect();
             //		reportST.impl.dump();
             return reportST;
         }
 
-        /** Return a StringTemplate that refers to the current format used for
+        /**
+         * Return a StringTemplate that refers to the current format used for
          * emitting messages.
          */
         public virtual Template GetLocationFormat()
@@ -116,6 +123,7 @@ namespace Antlr4.Tool
         {
             return format.GetInstanceOf("message");
         }
+
         public virtual bool FormatWantsSingleLineMessage()
         {
             return format.GetInstanceOf("wantsSingleLineMessage").Render().Equals("true");
@@ -127,10 +135,10 @@ namespace Antlr4.Tool
         }
 
         public virtual void SyntaxError(ErrorType etype,
-                                       string fileName,
-                                       Antlr.Runtime.IToken token,
-                                       Antlr.Runtime.RecognitionException antlrException,
-                                       params object[] args)
+            string fileName,
+            IToken token,
+            RecognitionException antlrException,
+            params object[] args)
         {
             ANTLRMessage msg = new GrammarSyntaxMessage(etype, fileName, token, antlrException, args);
             Emit(etype, msg);
@@ -169,18 +177,17 @@ namespace Antlr4.Tool
 
         public virtual void ToolError(ErrorType errorType, Exception e, params object[] args)
         {
-            ToolMessage msg = new ToolMessage(errorType, e, args);
+            ToolMessage msg = new(errorType, e, args);
             Emit(errorType, msg);
         }
 
         public virtual void GrammarError(ErrorType etype,
-                                 string fileName,
-                                 Antlr.Runtime.IToken token,
-                                 params object[] args)
+            string fileName,
+            IToken token,
+            params object[] args)
         {
             ANTLRMessage msg = new GrammarSemanticsMessage(etype, fileName, token, args);
             Emit(etype, msg);
-
         }
 
         public virtual void LeftRecursionCycles(string fileName, IEnumerable<IEnumerable<Rule>> cycles)
@@ -195,16 +202,22 @@ namespace Antlr4.Tool
             return errors;
         }
 
-        /** Return first non ErrorManager code location for generating messages */
+        /**
+         * Return first non ErrorManager code location for generating messages
+         */
         private static string GetLastNonErrorManagerCodeLocation(Exception e)
         {
-            string[] stack = e.StackTrace.Split(new[] { '\n', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] stack = e.StackTrace.Split(new[] {'\n', '\n'}, StringSplitOptions.RemoveEmptyEntries);
             int i = 0;
-            for (; i < stack.Length; i++)
+            for (;
+                i < stack.Length;
+                i++)
             {
                 string t = stack[i];
                 if (!t.Contains(nameof(ErrorManager)))
+                {
                     return t;
+                }
             }
 
             return stack.LastOrDefault() ?? "<Uknown>";
@@ -214,7 +227,7 @@ namespace Antlr4.Tool
 
         public virtual void Emit(ErrorType etype, ANTLRMessage msg)
         {
-            var severity = etype.severity;
+            ErrorSeverity severity = etype.severity;
             if (severity == ErrorSeverity.WARNING_ONE_OFF || severity == ErrorSeverity.WARNING)
             {
                 if (severity == ErrorSeverity.WARNING || !errorTypes.Contains(etype))
@@ -235,8 +248,9 @@ namespace Antlr4.Tool
             errorTypes.Add(etype);
         }
 
-        /** The format gets reset either from the Tool if the user supplied a command line option to that effect
-         *  Otherwise we just use the default "antlr".
+        /**
+         * The format gets reset either from the Tool if the user supplied a command line option to that effect
+         * Otherwise we just use the default "antlr".
          */
         public virtual void SetFormat(string formatName)
         {
@@ -267,7 +281,7 @@ namespace Antlr4.Tool
             if (initSTListener.Errors.Count > 0)
             {
                 RawError("ANTLR installation corrupted; can't load messages format file:\n" +
-                         initSTListener.ToString());
+                         initSTListener);
                 Panic();
             }
 
@@ -283,7 +297,9 @@ namespace Antlr4.Tool
             }
         }
 
-        /** Verify the message format template group */
+        /**
+         * Verify the message format template group
+         */
         protected virtual bool VerifyFormat()
         {
             bool ok = true;
@@ -292,21 +308,25 @@ namespace Antlr4.Tool
                 tool.ConsoleError.WriteLine("Format template 'location' not found in " + formatName);
                 ok = false;
             }
+
             if (!format.IsDefined("message"))
             {
                 tool.ConsoleError.WriteLine("Format template 'message' not found in " + formatName);
                 ok = false;
             }
+
             if (!format.IsDefined("report"))
             {
                 tool.ConsoleError.WriteLine("Format template 'report' not found in " + formatName);
                 ok = false;
             }
+
             return ok;
         }
 
-        /** If there are errors during ErrorManager init, we have no choice
-         *  but to go to System.err.
+        /**
+         * If there are errors during ErrorManager init, we have no choice
+         * but to go to System.err.
          */
         internal void RawError(string msg)
         {
@@ -322,13 +342,14 @@ namespace Antlr4.Tool
 
         public virtual void Panic(ErrorType errorType, params object[] args)
         {
-            ToolMessage msg = new ToolMessage(errorType, args);
+            ToolMessage msg = new(errorType, args);
             Template msgST = GetMessageTemplate(msg);
             string outputMsg = msgST.Render();
             if (FormatWantsSingleLineMessage())
             {
                 outputMsg = outputMsg.Replace('\n', ' ');
             }
+
             Panic(outputMsg);
         }
 

@@ -1,53 +1,66 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System.Collections.Generic;
+#if true
+using Antlr4.Runtime.Misc;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+using Antlr4.Misc;
+using Antlr4.Tool.Ast;
+
 namespace Antlr4.Tool
 {
-    using System.Collections.Generic;
-    using Antlr4.Misc;
-    using Antlr4.Tool.Ast;
-    using NotNullAttribute = Antlr4.Runtime.Misc.NotNullAttribute;
-    using NullableAttribute = Antlr4.Runtime.Misc.NullableAttribute;
-
-    /** Track the attributes within retval, arg lists etc...
-     *  <p>
-     *  Each rule has potentially 3 scopes: return values,
-     *  parameters, and an implicitly-named scope (i.e., a scope defined in a rule).
-     *  Implicitly-defined scopes are named after the rule; rules and scopes then
-     *  must live in the same name space--no collisions allowed.</p>
+    /**
+     * Track the attributes within retval, arg lists etc...
+     * <p>
+     *     Each rule has potentially 3 scopes: return values,
+     *     parameters, and an implicitly-named scope (i.e., a scope defined in a rule).
+     *     Implicitly-defined scopes are named after the rule; rules and scopes then
+     *     must live in the same name space--no collisions allowed.
+     * </p>
      */
     public class AttributeDict
     {
-        public string name;
-        public GrammarAST ast;
-        public DictType type;
-
-        /** All {@link Token} scopes (token labels) share the same fixed scope of
-         *  of predefined attributes.  I keep this out of the {@link Token}
-         *  interface to avoid a runtime type leakage.
-         */
-        public static readonly AttributeDict predefinedTokenDict = new AttributeDict(DictType.TOKEN);
-        static AttributeDict()
-        {
-            predefinedTokenDict.Add(new Attribute("text"));
-            predefinedTokenDict.Add(new Attribute("type"));
-            predefinedTokenDict.Add(new Attribute("line"));
-            predefinedTokenDict.Add(new Attribute("index"));
-            predefinedTokenDict.Add(new Attribute("pos"));
-            predefinedTokenDict.Add(new Attribute("channel"));
-            predefinedTokenDict.Add(new Attribute("int"));
-        }
-
         public enum DictType
         {
-            ARG, RET, LOCAL, TOKEN,
-            PREDEFINED_RULE, PREDEFINED_LEXER_RULE,
+            ARG,
+            RET,
+            LOCAL,
+            TOKEN,
+            PREDEFINED_RULE,
+            PREDEFINED_LEXER_RULE
         }
 
-        /** The list of {@link Attribute} objects. */
-        [NotNull]
-        public readonly LinkedHashMap<string, Attribute> attributes =
-            new LinkedHashMap<string, Attribute>();
+        /**
+         * All {@link Token} scopes (token labels) share the same fixed scope of
+         * of predefined attributes.  I keep this out of the {@link Token}
+         * interface to avoid a runtime type leakage.
+         */
+        public static readonly AttributeDict predefinedTokenDict = new(DictType.TOKEN);
+
+        /**
+         * The list of {@link Attribute} objects.
+         */
+        [NotNull] public readonly LinkedHashMap<string, AttributeNode> attributes =
+            new();
+
+        public GrammarAST ast;
+        public string name;
+        public DictType type;
+
+        static AttributeDict()
+        {
+            predefinedTokenDict.Add(new AttributeNode("text"));
+            predefinedTokenDict.Add(new AttributeNode("type"));
+            predefinedTokenDict.Add(new AttributeNode("line"));
+            predefinedTokenDict.Add(new AttributeNode("index"));
+            predefinedTokenDict.Add(new AttributeNode("pos"));
+            predefinedTokenDict.Add(new AttributeNode("channel"));
+            predefinedTokenDict.Add(new AttributeNode("int"));
+        }
 
         public AttributeDict()
         {
@@ -58,17 +71,19 @@ namespace Antlr4.Tool
             this.type = type;
         }
 
-        public virtual Attribute Add(Attribute a)
+        public virtual AttributeNode Add(AttributeNode a)
         {
             a.dict = this;
             return attributes[a.name] = a;
         }
 
-        public virtual Attribute Get(string name)
+        public virtual AttributeNode Get(string name)
         {
-            Attribute result;
+            AttributeNode result;
             if (!attributes.TryGetValue(name, out result))
+            {
                 return null;
+            }
 
             return result;
         }
@@ -83,11 +98,12 @@ namespace Antlr4.Tool
             return attributes.Count;
         }
 
-        /** Return the set of keys that collide from
-         *  {@code this} and {@code other}.
+        /**
+         * Return the set of keys that collide from
+         * {@code this} and {@code other}.
          */
         [return: NotNull]
-        public ISet<string> Intersection([Nullable] AttributeDict other)
+        public ISet<string> Intersection([AllowNull] AttributeDict other)
         {
             if (other == null || other.Size() == 0 || Size() == 0)
             {

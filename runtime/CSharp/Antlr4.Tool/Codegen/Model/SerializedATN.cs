@@ -1,13 +1,13 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Antlr4.Runtime.Atn;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using Antlr4.Runtime.Atn;
-    using Math = System.Math;
-
     public class SerializedATN : OutputModelObject
     {
         // TODO: make this into a kind of decl or multiple?
@@ -20,7 +20,7 @@ namespace Antlr4.Codegen.Model
             serialized = new List<string>(data.Count);
             foreach (int c in data)
             {
-                string encoded = factory.GetTarget().EncodeIntAsCharEscape(c == -1 ? char.MaxValue : c);
+                string encoded = factory.GetTarget().EncodeIntAsCharEscape(c == -1 ? Char.MaxValue : c);
                 serialized.Add(encoded);
             }
             //System.Console.WriteLine(ATNSerializer.GetDecoded(factory.GetGrammar(), atn));
@@ -30,9 +30,11 @@ namespace Antlr4.Codegen.Model
         {
             IList<string[]> segments = new List<string[]>();
             int segmentLimit = factory.GetTarget().GetSerializedATNSegmentLimit();
-            for (int i = 0; i < serialized.Count; i += segmentLimit)
+            for (int i = 0;
+                i < serialized.Count;
+                i += segmentLimit)
             {
-                IList<string> currentSegment = new System.ArraySegment<string>(serialized.ToArray(), i, Math.Min(i + segmentLimit, serialized.Count) - i);
+                IList<string> currentSegment = new ArraySegment<string>(serialized.ToArray(), i, Math.Min(i + segmentLimit, serialized.Count) - i);
                 segments.Add(currentSegment.ToArray());
             }
 

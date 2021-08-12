@@ -1,18 +1,20 @@
 ﻿// Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-namespace Antlr4.Runtime.Sharpen
-{
-    using System;
-    using System.Collections.Generic;
-    using StringBuilder = System.Text.StringBuilder;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
+namespace Antlr4.Runtime.Utility
+{
     internal static class Arrays
     {
         public static T[] CopyOf<T>(T[] array, int newSize)
         {
             if (array.Length == newSize)
-                return (T[])array.Clone();
+            {
+                return (T[]) array.Clone();
+            }
 
             Array.Resize(ref array, newSize);
             return array;
@@ -25,18 +27,26 @@ namespace Antlr4.Runtime.Sharpen
 
         public static void Fill<T>(T[] array, T value)
         {
-            for (int i = 0; i < array.Length; i++)
+            for (int i = 0;
+                i < array.Length;
+                i++)
+            {
                 array[i] = value;
+            }
         }
 
         public static int HashCode<T>(T[] array)
         {
             if (array == null)
+            {
                 return 0;
+            }
 
             int result = 1;
             foreach (object o in array)
+            {
                 result = 31 * result + (o == null ? 0 : o.GetHashCode());
+            }
 
             return result;
         }
@@ -44,17 +54,28 @@ namespace Antlr4.Runtime.Sharpen
         public static bool Equals<T>(T[] left, T[] right)
         {
             if (left == right)
+            {
                 return true;
-            else if (left == null || right == null)
+            }
+
+            if (left == null || right == null)
+            {
                 return false;
+            }
 
             if (left.Length != right.Length)
-                return false;
-
-            for (int i = 0; i < left.Length; i++)
             {
-                if (!object.Equals(left[i], right[i]))
+                return false;
+            }
+
+            for (int i = 0;
+                i < left.Length;
+                i++)
+            {
+                if (!Equals(left[i], right[i]))
+                {
                     return false;
+                }
             }
 
             return true;
@@ -63,20 +84,30 @@ namespace Antlr4.Runtime.Sharpen
         public static string ToString<T>(T[] array)
         {
             if (array == null)
+            {
                 return "null";
+            }
 
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new();
             builder.Append('[');
-            for (int i = 0; i < array.Length; i++)
+            for (int i = 0;
+                i < array.Length;
+                i++)
             {
                 if (i > 0)
+                {
                     builder.Append(", ");
+                }
 
                 T o = array[i];
                 if (o == null)
+                {
                     builder.Append("null");
+                }
                 else
+                {
                     builder.Append(o);
+                }
             }
 
             builder.Append(']');

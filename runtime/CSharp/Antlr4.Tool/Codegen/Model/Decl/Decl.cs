@@ -6,10 +6,10 @@ namespace Antlr4.Codegen.Model.Decl
     /** */
     public class Decl : SrcOp
     {
-        public string name;
-        public string decl;     // whole thing if copied from action
+        public StructDecl ctx; // which context contains us? set by addDecl
+        public string decl; // whole thing if copied from action
         public bool isLocal; // if local var (not in RuleContext struct)
-        public StructDecl ctx;  // which context contains us? set by addDecl
+        public string name;
 
         public Decl(OutputModelFactory factory, string name, string decl)
             : this(factory, name)
@@ -28,17 +28,28 @@ namespace Antlr4.Codegen.Model.Decl
             return name.GetHashCode();
         }
 
-        /** If same name, can't redefine, unless it's a getter */
+        /**
+         * If same name, can't redefine, unless it's a getter
+         */
         public override bool Equals(object obj)
         {
             if (this == obj)
+            {
                 return true;
+            }
+
             if (!(obj is Decl))
+            {
                 return false;
+            }
+
             // A() and label A are different
             if (obj is ContextGetterDecl)
+            {
                 return false;
-            return name.Equals(((Decl)obj).name);
+            }
+
+            return name.Equals(((Decl) obj).name);
         }
     }
 }

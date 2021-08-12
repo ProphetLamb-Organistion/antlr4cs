@@ -2,60 +2,64 @@
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
 using System;
-using Antlr4.Runtime;
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime.Tree.Pattern
 {
     /// <summary>
-    /// A
-    /// <see cref="Antlr4.Runtime.IToken"/>
-    /// object representing an entire subtree matched by a parser
-    /// rule; e.g.,
-    /// <c>&lt;expr&gt;</c>
-    /// . These tokens are created for
-    /// <see cref="TagChunk"/>
-    /// chunks where the tag corresponds to a parser rule.
+    ///     A
+    ///     <see cref="Antlr4.Runtime.IToken" />
+    ///     object representing an entire subtree matched by a parser
+    ///     rule; e.g.,
+    ///     <c>&lt;expr&gt;</c>
+    ///     . These tokens are created for
+    ///     <see cref="TagChunk" />
+    ///     chunks where the tag corresponds to a parser rule.
     /// </summary>
     public class RuleTagToken : IToken
     {
-        /// <summary>
-        /// This is the backing field for
-        /// <see cref="RuleName()"/>
-        /// .
-        /// </summary>
-        private readonly string ruleName;
-
         /// <summary>The token type for the current token.</summary>
         /// <remarks>
-        /// The token type for the current token. This is the token type assigned to
-        /// the bypass alternative for the rule during ATN deserialization.
+        ///     The token type for the current token. This is the token type assigned to
+        ///     the bypass alternative for the rule during ATN deserialization.
         /// </remarks>
         private readonly int bypassTokenType;
 
         /// <summary>
-        /// This is the backing field for
-        /// <see cref="Label()"/>
-        /// .
+        ///     This is the backing field for
+        ///     <see cref="Label()" />
+        ///     .
         /// </summary>
         private readonly string label;
 
         /// <summary>
-        /// Constructs a new instance of
-        /// <see cref="RuleTagToken"/>
-        /// with the specified rule
-        /// name and bypass token type and no label.
+        ///     This is the backing field for
+        ///     <see cref="RuleName()" />
+        ///     .
+        /// </summary>
+        private readonly string ruleName;
+
+        /// <summary>
+        ///     Constructs a new instance of
+        ///     <see cref="RuleTagToken" />
+        ///     with the specified rule
+        ///     name and bypass token type and no label.
         /// </summary>
         /// <param name="ruleName">The name of the parser rule this rule tag matches.</param>
         /// <param name="bypassTokenType">The bypass token type assigned to the parser rule.</param>
         /// <exception>
-        /// IllegalArgumentException
-        /// if
-        /// <paramref name="ruleName"/>
-        /// is
-        /// <see langword="null"/>
-        /// or empty.
+        ///     IllegalArgumentException
+        ///     if
+        ///     <paramref name="ruleName" />
+        ///     is
+        ///     <see langword="null" />
+        ///     or empty.
         /// </exception>
         public RuleTagToken([NotNull] string ruleName, int bypassTokenType)
             : this(ruleName, bypassTokenType, null)
@@ -63,33 +67,34 @@ namespace Antlr4.Runtime.Tree.Pattern
         }
 
         /// <summary>
-        /// Constructs a new instance of
-        /// <see cref="RuleTagToken"/>
-        /// with the specified rule
-        /// name, bypass token type, and label.
+        ///     Constructs a new instance of
+        ///     <see cref="RuleTagToken" />
+        ///     with the specified rule
+        ///     name, bypass token type, and label.
         /// </summary>
         /// <param name="ruleName">The name of the parser rule this rule tag matches.</param>
         /// <param name="bypassTokenType">The bypass token type assigned to the parser rule.</param>
         /// <param name="label">
-        /// The label associated with the rule tag, or
-        /// <see langword="null"/>
-        /// if
-        /// the rule tag is unlabeled.
+        ///     The label associated with the rule tag, or
+        ///     <see langword="null" />
+        ///     if
+        ///     the rule tag is unlabeled.
         /// </param>
         /// <exception>
-        /// IllegalArgumentException
-        /// if
-        /// <paramref name="ruleName"/>
-        /// is
-        /// <see langword="null"/>
-        /// or empty.
+        ///     IllegalArgumentException
+        ///     if
+        ///     <paramref name="ruleName" />
+        ///     is
+        ///     <see langword="null" />
+        ///     or empty.
         /// </exception>
-        public RuleTagToken([NotNull] string ruleName, int bypassTokenType, [Nullable] string label)
+        public RuleTagToken([NotNull] string ruleName, int bypassTokenType, [AllowNull] string label)
         {
-            if (string.IsNullOrEmpty(ruleName))
+            if (String.IsNullOrEmpty(ruleName))
             {
                 throw new ArgumentException("ruleName cannot be null or empty.");
             }
+
             this.ruleName = ruleName;
             this.bypassTokenType = bypassTokenType;
             this.label = label;
@@ -98,50 +103,36 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <summary>Gets the name of the rule associated with this rule tag.</summary>
         /// <returns>The name of the parser rule associated with this rule tag.</returns>
         [NotNull]
-        public string RuleName
-        {
-            get
-            {
-                return ruleName;
-            }
-        }
+        public string RuleName => ruleName;
 
         /// <summary>Gets the label associated with the rule tag.</summary>
         /// <returns>
-        /// The name of the label associated with the rule tag, or
-        /// <see langword="null"/>
-        /// if this is an unlabeled rule tag.
+        ///     The name of the label associated with the rule tag, or
+        ///     <see langword="null" />
+        ///     if this is an unlabeled rule tag.
         /// </returns>
-        [Nullable]
-        public string Label
-        {
-            get
-            {
-                return label;
-            }
-        }
+        [MaybeNull]
+        public string Label => label;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>Rule tag tokens are always placed on the
-        /// <see cref="TokenConstants.DefaultChannel"/>
-        /// .</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         Rule tag tokens are always placed on the
+        ///         <see cref="TokenConstants.DefaultChannel" />
+        ///         .
+        ///     </p>
         /// </summary>
-        public virtual int Channel
-        {
-            get
-            {
-                return TokenConstants.DefaultChannel;
-            }
-        }
+        public virtual int Channel => TokenConstants.DefaultChannel;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>This method returns the rule tag formatted with
-        /// <c>&lt;</c>
-        /// and
-        /// <c>&gt;</c>
-        /// delimiters.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         This method returns the rule tag formatted with
+        ///         <c>&lt;</c>
+        ///         and
+        ///         <c>&gt;</c>
+        ///         delimiters.
+        ///     </p>
         /// </summary>
         public virtual string Text
         {
@@ -151,132 +142,103 @@ namespace Antlr4.Runtime.Tree.Pattern
                 {
                     return "<" + label + ":" + ruleName + ">";
                 }
+
                 return "<" + ruleName + ">";
             }
         }
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>Rule tag tokens have types assigned according to the rule bypass
-        /// transitions created during ATN deserialization.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         Rule tag tokens have types assigned according to the rule bypass
+        ///         transitions created during ATN deserialization.
+        ///     </p>
         /// </summary>
-        public virtual int Type
-        {
-            get
-            {
-                return bypassTokenType;
-            }
-        }
+        public virtual int Type => bypassTokenType;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns 0.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns 0.
+        ///     </p>
         /// </summary>
-        public virtual int Line
-        {
-            get
-            {
-                return 0;
-            }
-        }
+        public virtual int Line => 0;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns -1.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns -1.
+        ///     </p>
         /// </summary>
-        public virtual int Column
-        {
-            get
-            {
-                return -1;
-            }
-        }
+        public virtual int Column => -1;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns -1.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns -1.
+        ///     </p>
         /// </summary>
-        public virtual int TokenIndex
-        {
-            get
-            {
-                return -1;
-            }
-        }
+        public virtual int TokenIndex => -1;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns -1.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns -1.
+        ///     </p>
         /// </summary>
-        public virtual int StartIndex
-        {
-            get
-            {
-                return -1;
-            }
-        }
+        public virtual int StartIndex => -1;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns -1.</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns -1.
+        ///     </p>
         /// </summary>
-        public virtual int StopIndex
-        {
-            get
-            {
-                return -1;
-            }
-        }
+        public virtual int StopIndex => -1;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns
-        /// <see langword="null"/>
-        /// .</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns
+        ///         <see langword="null" />
+        ///         .
+        ///     </p>
         /// </summary>
-        public virtual ITokenSource TokenSource
-        {
-            get
-            {
-                return null;
-            }
-        }
+        public virtual ITokenSource TokenSource => null;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// always returns
-        /// <see langword="null"/>
-        /// .</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         always returns
+        ///         <see langword="null" />
+        ///         .
+        ///     </p>
         /// </summary>
-        public virtual ICharStream InputStream
-        {
-            get
-            {
-                return null;
-            }
-        }
+        public virtual ICharStream InputStream => null;
 
         /// <summary>
-        /// <inheritDoc/>
-        /// <p>The implementation for
-        /// <see cref="RuleTagToken"/>
-        /// returns a string of the form
-        /// <c>ruleName:bypassTokenType</c>
-        /// .</p>
+        ///     <inheritDoc />
+        ///     <p>
+        ///         The implementation for
+        ///         <see cref="RuleTagToken" />
+        ///         returns a string of the form
+        ///         <c>ruleName:bypassTokenType</c>
+        ///         .
+        ///     </p>
         /// </summary>
         public override string ToString()
         {

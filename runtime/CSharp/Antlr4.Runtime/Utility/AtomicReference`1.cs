@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
-namespace Antlr4.Runtime.Sharpen
-{
-    using Interlocked = System.Threading.Interlocked;
+using System.Threading;
 
+namespace Antlr4.Runtime.Utility
+{
     public class AtomicReference<T>
         where T : class
     {

@@ -1,8 +1,13 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+#if true
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
+#else
+using System.Diagnostics.CodeAnalysis;
+#endif
+
+
 
 namespace Antlr4.Runtime.Atn
 {
@@ -17,33 +22,15 @@ namespace Antlr4.Runtime.Atn
             this.precedence = precedence;
         }
 
-        public override Antlr4.Runtime.Atn.TransitionType TransitionType
-        {
-            get
-            {
-                return Antlr4.Runtime.Atn.TransitionType.Precedence;
-            }
-        }
+        public override TransitionType TransitionType => TransitionType.Precedence;
 
-        public override bool IsEpsilon
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool IsEpsilon => true;
+
+        public SemanticContext.PrecedencePredicate Predicate => new SemanticContext.PrecedencePredicate(precedence);
 
         public override bool Matches(int symbol, int minVocabSymbol, int maxVocabSymbol)
         {
             return false;
-        }
-
-        public SemanticContext.PrecedencePredicate Predicate
-        {
-            get
-            {
-                return new SemanticContext.PrecedencePredicate(precedence);
-            }
         }
 
         public override string ToString()

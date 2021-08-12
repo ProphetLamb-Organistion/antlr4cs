@@ -1,43 +1,44 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Antlr4.Codegen.Model.Chunk;
+using Antlr4.Misc;
+using Antlr4.Tool;
+
 namespace Antlr4.Codegen.Model
 {
-    using System.Collections.Generic;
-    using Antlr4.Codegen.Model.Chunk;
-    using Antlr4.Misc;
-    using Antlr4.Tool;
-    using Array = System.Array;
-    using Path = System.IO.Path;
-
     public abstract class Recognizer : OutputModelObject
     {
-        public string name;
-        public string grammarName;
+        public bool abstractRecognizer;
+
+        [ModelElement] public SerializedATN atn;
+
         public string grammarFileName;
-        public IDictionary<string, int> tokens;
+        public string grammarName;
+
+        public IList<string> literalNames;
+        public string name;
+        public ICollection<string> ruleNames;
+        public ICollection<Rule> rules;
+
+        [ModelElement] public LinkedHashMap<Rule, RuleSempredFunction> sempredFuncs =
+            new();
+
+        [ModelElement] public ActionChunk superClass;
+
+        public IList<string> symbolicNames;
 
         /**
          * @deprecated This field is provided only for compatibility with code
          * generation targets which have not yet been updated to use
          * {@link #literalNames} and {@link #symbolicNames}.
          */
-        [System.Obsolete]
-        public IList<string> tokenNames;
+        [Obsolete] public IList<string> tokenNames;
 
-        public IList<string> literalNames;
-        public IList<string> symbolicNames;
-        public ICollection<string> ruleNames;
-        public ICollection<Rule> rules;
-        [ModelElement]
-        public ActionChunk superClass;
-        public bool abstractRecognizer;
-
-        [ModelElement]
-        public SerializedATN atn;
-        [ModelElement]
-        public LinkedHashMap<Rule, RuleSempredFunction> sempredFuncs =
-            new LinkedHashMap<Rule, RuleSempredFunction>();
+        public IDictionary<string, int> tokens;
 
         protected Recognizer(OutputModelFactory factory)
             : base(factory)
@@ -78,8 +79,10 @@ namespace Antlr4.Codegen.Model
 
         protected static IList<string> TranslateTokenStringsToTarget(string[] tokenStrings, OutputModelFactory factory)
         {
-            string[] result = (string[])tokenStrings.Clone();
-            for (int i = 0; i < tokenStrings.Length; i++)
+            string[] result = (string[]) tokenStrings.Clone();
+            for (int i = 0;
+                i < tokenStrings.Length;
+                i++)
             {
                 result[i] = TranslateTokenStringToTarget(tokenStrings[i], factory);
             }
@@ -112,10 +115,8 @@ namespace Antlr4.Codegen.Model
                     factory.GetTarget().GetTargetStringLiteralFromANTLRStringLiteral(factory.GetGenerator(), tokenName, addQuotes);
                 return "\"'" + targetString + "'\"";
             }
-            else
-            {
-                return factory.GetTarget().GetTargetStringLiteralFromString(tokenName, true);
-            }
+
+            return factory.GetTarget().GetTargetStringLiteralFromString(tokenName, true);
         }
     }
 }

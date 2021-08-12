@@ -3,12 +3,14 @@
 
 namespace Antlr4.Codegen.Model.Decl
 {
-    /** {@code public List&lt;XContext&gt; X() { }
-     *  public XContext X(int i) { }}
+    /**
+     * {@code public List&lt;XContext&gt; X() { }
+     * public XContext X(int i) { }}
      */
     public class ContextRuleListGetterDecl : ContextGetterDecl
     {
         public string ctxName;
+
         public ContextRuleListGetterDecl(OutputModelFactory factory, string name, string ctxName)
             : base(factory, name)
         {

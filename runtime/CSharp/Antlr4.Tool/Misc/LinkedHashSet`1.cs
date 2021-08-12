@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
 
+using System;
+using System.Collections;
+using System.Collections.Generic;
+
 namespace Antlr4.Misc
 {
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
-
     public class LinkedHashSet<T> : ISet<T>
     {
         private readonly Dictionary<T, LinkedListNode<T>> _dictionary;
@@ -18,26 +18,16 @@ namespace Antlr4.Misc
             _list = new LinkedList<T>();
         }
 
-        public virtual int Count
-        {
-            get
-            {
-                return _dictionary.Count;
-            }
-        }
+        public virtual int Count => _dictionary.Count;
 
-        bool ICollection<T>.IsReadOnly
-        {
-            get
-            {
-                return false;
-            }
-        }
+        bool ICollection<T>.IsReadOnly => false;
 
         public virtual bool Add(T item)
         {
             if (_dictionary.ContainsKey(item))
+            {
                 return false;
+            }
 
             var node = new LinkedListNode<T>(item);
             _dictionary.Add(item, node);
@@ -105,7 +95,9 @@ namespace Antlr4.Misc
         {
             LinkedListNode<T> node;
             if (!_dictionary.TryGetValue(item, out node))
+            {
                 return false;
+            }
 
             _dictionary.Remove(item);
             _list.Remove(node);
@@ -125,7 +117,9 @@ namespace Antlr4.Misc
         public virtual void UnionWith(IEnumerable<T> other)
         {
             foreach (T item in other)
+            {
                 Add(item);
+            }
         }
 
         void ICollection<T>.Add(T item)
