@@ -4,7 +4,7 @@
   <PropertyGroup>
     <!-- Note: net452 is used for testing the netstandard1.1 target. -->
     <!-- Note: net472 is used for testing the netstandard2.0 target. -->
-    <TargetFrameworks>net20;net30;net35;portable40-net40+sl5+win8+wp8+wpa81;net40;net45;net452;net472</TargetFrameworks>
+    <TargetFrameworks>net45;net452;net472</TargetFrameworks>
     <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 

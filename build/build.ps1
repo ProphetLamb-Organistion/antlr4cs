@@ -1,6 +1,6 @@
 param (
 	[switch]$Debug,
-	[string]$VisualStudioVersion = "15.0",
+	[string]$VisualStudioVersion,
 	[switch]$NoClean,
 	[string]$Verbosity = "minimal",
 	[string]$Logger,
@@ -118,13 +118,25 @@ If (-not (Test-Path $nuget)) {
 	}
 }
 
+
 # build the main project
-$visualStudio = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7')."$VisualStudioVersion"
-$msbuild = "$visualStudio\MSBuild\$VisualStudioVersion\Bin\MSBuild.exe"
+function GetMsBuildPath() {
+	if (-not [String]::IsNullOrEmpty($VisualStudioVersion)) {
+		$visualStudio = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7')."$VisualStudioVersion"
+		return "$visualStudio\MSBuild\$VisualStudioVersion\Bin\MSBuild.exe"
+	}
+	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0' -errorAction SilentlyContinue)
+	if ($null -ne $_key) { return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe") }
+	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\2.0' -errorAction SilentlyContinue)
+	if ($null -ne $_key) { return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe") }
+}
+
+$msbuild=GetMsBuildPath
 If (-not (Test-Path $msbuild)) {
 	$host.UI.WriteErrorLine("Couldn't find MSBuild.exe")
 	exit 1
 }
+$visualStudioVersionOption=if($null -eq $VisualStudioVersion) { $null } else { "/p:VisualStudioVersion=$VisualStudioVersion" }
 
 If ($Logger) {
 	$LoggerArgument = "/logger:$Logger"
@@ -136,7 +148,7 @@ if (-not $?) {
 	Exit $LASTEXITCODE
 }
 
-&$msbuild '/nologo' '/m' '/nr:false' "/t:$Target" $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" "/p:VisualStudioVersion=$VisualStudioVersion" "/p:KeyConfiguration=$KeyConfiguration" $SolutionPath
+&$msbuild '/nologo' '/m' '/nr:false' "/t:$Target" $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" $visualStudioVersionOption "/p:KeyConfiguration=$KeyConfiguration" $SolutionPath
 if (-not $?) {
 	$host.ui.WriteErrorLine('Build failed, aborting!')
 	Exit $LASTEXITCODE
