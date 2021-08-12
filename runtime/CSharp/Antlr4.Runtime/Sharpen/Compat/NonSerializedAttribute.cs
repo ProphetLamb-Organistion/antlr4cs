@@ -1,11 +1,9 @@
-﻿#if !PORTABLE || NETSTANDARD2_0
+﻿#if !PORTABLE
 
-#if !COMPACT
 using System;
 using System.Runtime.CompilerServices;
 
 [assembly: TypeForwardedTo(typeof(NonSerializedAttribute))]
-#endif
 
 #else
 

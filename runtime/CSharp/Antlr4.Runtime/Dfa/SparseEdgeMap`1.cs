@@ -191,7 +191,7 @@ namespace Antlr4.Runtime.Dfa
             {
 #if COMPACT
                 IDictionary<int, T> result = new SortedList<int, T>();
-#elif PORTABLE && !NET45PLUS
+#elif PORTABLE && !true
                 IDictionary<int, T> result = new Dictionary<int, T>();
 #else
                 IDictionary<int, T> result = new SortedDictionary<int, T>();

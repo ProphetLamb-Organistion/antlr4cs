@@ -4,9 +4,6 @@
 using System.Collections.Generic;
 using Antlr4.Runtime.Dfa;
 using Antlr4.Runtime.Sharpen;
-#if !PORTABLE || NET45PLUS
-using Stopwatch = System.Diagnostics.Stopwatch;
-#endif
 
 namespace Antlr4.Runtime.Atn
 {
@@ -39,7 +36,6 @@ namespace Antlr4.Runtime.Atn
         /// </summary>
         public long invocations;
 
-#if !PORTABLE || NET45PLUS
         /// <summary>
         /// The total time spent in
         /// <see cref="ParserATNSimulator.AdaptivePredict(ITokenStream, int, ParserRuleContext)"/>
@@ -55,7 +51,6 @@ namespace Antlr4.Runtime.Atn
         /// state before starting the profiling measurement pass.</p>
         /// </summary>
         public long timeInPrediction;
-#endif
 
         /// <summary>The sum of the lookahead required for SLL prediction for this decision.</summary>
         /// <remarks>

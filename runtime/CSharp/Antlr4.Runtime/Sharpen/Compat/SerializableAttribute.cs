@@ -1,4 +1,4 @@
-﻿#if PORTABLE && !NETSTANDARD2_0
+﻿#if PORTABLE
 
 namespace System
 {

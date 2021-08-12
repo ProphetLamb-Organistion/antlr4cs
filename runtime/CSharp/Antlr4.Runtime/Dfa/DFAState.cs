@@ -248,22 +248,10 @@ namespace Antlr4.Runtime.Dfa
                     }
                     else
                     {
-#if NET45PLUS
                         Dictionary<int, DFAState> result = map.ToDictionary(i => i.Key, i => i.Value);
-#else
-                        Dictionary<int, DFAState> result = new Dictionary<int, DFAState>(map);
-#endif
                         result.Add(PredictionContext.EmptyFullStateKey, result[-1]);
                         result.Remove(-1);
-#if NET45PLUS
-                        map = new ReadOnlyDictionary<int, DFAState>(new SortedDictionary<int, DFAState>(result));
-#elif COMPACT
-                        map = new ReadOnlyDictionary<int,DFAState>(new SortedList<int, DFAState>(result));
-#elif PORTABLE && !NET45PLUS
                         map = new ReadOnlyDictionary<int, DFAState>(new Dictionary<int, DFAState>(result));
-#else
-                        map = new ReadOnlyDictionary<int, DFAState>(new SortedDictionary<int, DFAState>(result));
-#endif
                     }
                 }
                 return map;

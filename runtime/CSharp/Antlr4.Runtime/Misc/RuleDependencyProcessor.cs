@@ -1,5 +1,6 @@
 // Copyright (c) Terence Parr, Sam Harwell. All Rights Reserved.
 // Licensed under the BSD License. See LICENSE.txt in the project root for license information.
+#if LEGACY
 
 using System;
 using System.Collections;
@@ -759,3 +760,4 @@ namespace Antlr4.Runtime.Misc
         }
     }
 }
+#endif

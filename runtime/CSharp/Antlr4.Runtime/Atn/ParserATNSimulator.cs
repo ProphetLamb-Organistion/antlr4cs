@@ -279,13 +279,11 @@ namespace Antlr4.Runtime.Atn
     public class ParserATNSimulator : ATNSimulator
     {
 #pragma warning disable 0162 // Unreachable code detected
-#if !PORTABLE || NETSTANDARD2_0
         public const bool debug = false;
 
         public const bool dfa_debug = false;
 
         public const bool retry_debug = false;
-#endif
 
         [NotNull]
         private Antlr4.Runtime.Atn.PredictionMode predictionMode = Antlr4.Runtime.Atn.PredictionMode.Ll;
@@ -566,12 +564,10 @@ namespace Antlr4.Runtime.Atn
                 DFAState target = GetExistingTargetState(s, t);
                 if (target == null)
                 {
-#if !PORTABLE || NETSTANDARD2_0
                     if (dfa_debug && t >= 0)
                     {
                         System.Console.Out.WriteLine("no edge for " + parser.Vocabulary.GetDisplayName(t));
                     }
-#endif
                     int alt;
                     SimulatorState initialState = new SimulatorState(outerContext, s, state.useContext, remainingOuterContext);
                     alt = ExecATN(dfa, input, startIndex, initialState);
@@ -1793,20 +1789,16 @@ namespace Antlr4.Runtime.Atn
                     continue;
                 }
                 bool evaluatedResult = EvalSemanticContext(pair.pred, outerContext, pair.alt);
-#if !PORTABLE || NETSTANDARD2_0
                 if (debug || dfa_debug)
                 {
                     System.Console.Out.WriteLine("eval pred " + pair + "=" + evaluatedResult);
                 }
-#endif
                 if (evaluatedResult)
                 {
-#if !PORTABLE || NETSTANDARD2_0
                     if (debug || dfa_debug)
                     {
                         System.Console.Out.WriteLine("PREDICT " + pair.alt);
                     }
-#endif
                     predictions.Set(pair.alt);
                     if (!complete)
                     {
@@ -2385,7 +2377,7 @@ namespace Antlr4.Runtime.Atn
             return GetTokenName(input.La(1));
         }
 
-#if !PORTABLE || NETSTANDARD2_0
+#if !LEGACY || !PORTABLE || NETSTANDARD2_0 || NETSTANDARD2_1
         public virtual void DumpDeadEndConfigs([NotNull] NoViableAltException nvae)
         {
             System.Console.Error.WriteLine("dead end configs: ");
@@ -2570,12 +2562,10 @@ namespace Antlr4.Runtime.Atn
                 return newState;
             }
             DFAState added = dfa.AddState(newState);
-#if !PORTABLE || NETSTANDARD2_0
             if (debug && added == newState)
             {
                 System.Console.Out.WriteLine("adding new DFA state: " + newState);
             }
-#endif
             return added;
         }
 
@@ -2587,13 +2577,11 @@ namespace Antlr4.Runtime.Atn
 
         protected internal virtual void ReportAttemptingFullContext([NotNull] DFA dfa, [Nullable] BitSet conflictingAlts, [NotNull] SimulatorState conflictState, int startIndex, int stopIndex)
         {
-#if !PORTABLE || NETSTANDARD2_0
             if (debug || retry_debug)
             {
                 Interval interval = Interval.Of(startIndex, stopIndex);
                 System.Console.Out.WriteLine("reportAttemptingFullContext decision=" + dfa.decision + ":" + conflictState.s0.configs + ", input=" + ((ITokenStream)parser.InputStream).GetText(interval));
             }
-#endif
             if (parser != null)
             {
                 ((IParserErrorListener)parser.ErrorListenerDispatch).ReportAttemptingFullContext(parser, dfa, startIndex, stopIndex, conflictingAlts, conflictState);
@@ -2602,13 +2590,11 @@ namespace Antlr4.Runtime.Atn
 
         protected internal virtual void ReportContextSensitivity([NotNull] DFA dfa, int prediction, [NotNull] SimulatorState acceptState, int startIndex, int stopIndex)
         {
-#if !PORTABLE || NETSTANDARD2_0
             if (debug || retry_debug)
             {
                 Interval interval = Interval.Of(startIndex, stopIndex);
                 System.Console.Out.WriteLine("reportContextSensitivity decision=" + dfa.decision + ":" + acceptState.s0.configs + ", input=" + ((ITokenStream)parser.InputStream).GetText(interval));
             }
-#endif
             if (parser != null)
             {
                 ((IParserErrorListener)parser.ErrorListenerDispatch).ReportContextSensitivity(parser, dfa, startIndex, stopIndex, prediction, acceptState);
@@ -2620,13 +2606,11 @@ namespace Antlr4.Runtime.Atn
         {
             // the DFA state from execATN() that had SLL conflicts
             // configs that LL not SLL considered conflicting
-#if !PORTABLE || NETSTANDARD2_0
             if (debug || retry_debug)
             {
                 Interval interval = Interval.Of(startIndex, stopIndex);
                 System.Console.Out.WriteLine("reportAmbiguity " + ambigAlts + ":" + configs + ", input=" + ((ITokenStream)parser.InputStream).GetText(interval));
             }
-#endif
             if (parser != null)
             {
                 ((IParserErrorListener)parser.ErrorListenerDispatch).ReportAmbiguity(parser, dfa, startIndex, stopIndex, exact, ambigAlts, configs);

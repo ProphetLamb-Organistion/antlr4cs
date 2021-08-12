@@ -7,12 +7,6 @@ using System.Collections.ObjectModel;
 using Antlr4.Runtime.Sharpen;
 using Interlocked = System.Threading.Interlocked;
 
-#if NET45PLUS
-using Volatile = System.Threading.Volatile;
-#elif !PORTABLE && !COMPACT
-using Thread = System.Threading.Thread;
-#endif
-
 namespace Antlr4.Runtime.Dfa
 {
     /// <author>Sam Harwell</author>
@@ -33,13 +27,7 @@ namespace Antlr4.Runtime.Dfa
         {
             get
             {
-#if NET45PLUS
-                return Volatile.Read(ref size);
-#elif !PORTABLE && !COMPACT
-                return Thread.VolatileRead(ref size);
-#else
                 return Interlocked.CompareExchange(ref size, 0, 0);
-#endif
             }
         }
 
@@ -65,11 +53,7 @@ namespace Antlr4.Runtime.Dfa
                     return null;
                 }
 
-#if NET45PLUS
-                return Volatile.Read(ref arrayData[key - minIndex]);
-#else
-                return Interlocked.CompareExchange(ref arrayData[key - minIndex], null, null);
-#endif
+                return Interlocked.CompareExchange(ref arrayData[key - minIndex], n
             }
         }
 
@@ -163,7 +147,7 @@ namespace Antlr4.Runtime.Dfa
 
 #if COMPACT
             IDictionary<int, T> result = new SortedList<int, T>();
-#elif PORTABLE && !NET45PLUS
+#elif PORTABLE && !true
             IDictionary<int, T> result = new Dictionary<int, T>();
 #else
             IDictionary<int, T> result = new SortedDictionary<int, T>();
