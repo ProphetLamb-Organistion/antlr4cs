@@ -437,19 +437,13 @@
                 options.Add(tmpdir);
                 options.Add("-lib");
                 options.Add(tmpdir);
-
-#if PORTABLE
+                
+#if NETSTANDARD || NETCOREAPP
                 options.Add("-Dlanguage=CSharp_v4_5");
+#elif NET5_0
+                options.Add("-Dlanguage=CSharp_v5_0");
 #elif NET45
                 options.Add("-Dlanguage=CSharp_v4_5");
-#elif NET40
-                options.Add("-Dlanguage=CSharp_v4_0");
-#elif NET35
-                options.Add("-Dlanguage=CSharp_v3_5");
-#elif NET30
-                options.Add("-Dlanguage=CSharp_v3_0");
-#elif NET20
-                options.Add("-Dlanguage=CSharp_v2_0");
 #else
 #error Unknown assembly.
 #endif

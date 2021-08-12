@@ -3,6 +3,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard1.5;net40</TargetFrameworks>
+    <LangVersion>9</LangVersion>
+    <Nullable>annotations</Nullable>
     <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
 
     <RootNamespace>Antlr4.Build.Tasks</RootNamespace>

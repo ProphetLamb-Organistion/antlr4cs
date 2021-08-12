@@ -1,4 +1,5 @@
 [The "BSD license"]
+Copyright (c) 2021 ProphetLamb
 Copyright (c) 2013 Sam Harwell
 Copyright (c) 2013 Terence Parr
 All rights reserved.

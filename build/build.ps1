@@ -10,7 +10,8 @@ param (
 	[switch]$SkipMaven,
 	[switch]$SkipKeyCheck,
 	[switch]$GenerateTests,
-	[switch]$NoValidate
+	[switch]$NoValidate,
+	[switch]$UseMsBuild
 )
 
 # build the solution
@@ -18,7 +19,7 @@ $SolutionPath = "..\Runtime\CSharp\Antlr4.sln"
 
 # make sure the script was run from the expected path
 if (!(Test-Path $SolutionPath)) {
-	$host.UI.WriteErrorLine("The script was run from an invalid working directory.")
+	Write-Error("The script was run from an invalid working directory.")
 	exit 1
 }
 
@@ -46,35 +47,85 @@ If (-not $MavenHome) {
 	$MavenHome = $env:M2_HOME
 }
 
-$Java6RegKey = 'HKLM:\SOFTWARE\JavaSoft\Java Runtime Environment\1.6'
-$Java6RegValue = 'JavaHome'
-If (-not $Java6Home -and (Test-Path $Java6RegKey)) {
-	$JavaHomeKey = Get-Item -LiteralPath $Java6RegKey
-	If ($JavaHomeKey.GetValue($Java6RegValue, $null) -ne $null) {
-		$JavaHomeProperty = Get-ItemProperty $Java6RegKey $Java6RegValue
-		$Java6Home = $JavaHomeProperty.$Java6RegValue
+function GetJavaPath() {
+	$_javaKey = 'HKLM:\SOFTWARE\JavaSoft\Java Runtime Environment\1.6'
+	$_javaPath = 'JavaHome'
+	if ($Java6Home -and (Test-Path $Java6Home)) {
+		return $Java6Home
 	}
+
+	if (Test-Path $_javaKey) {
+		$_javaHomeKey = Get-Item -LiteralPath $_javaKey
+		if ($null -ne $_javaHomeKey.GetValue($_javaPath, $null)) {
+			$_javaHomeProperty = Get-ItemProperty $_javaKey $_javaPath
+			return $_javaHomeProperty.$_javaPath
+		}
+	}
+
+	Write-Error 'Unable to locate the Java6 runtime.'
+	exit 0x10
 }
+
+function GetNugetPath() {
+	$_nuget=Get-Command('nuget') -ErrorAction SilentlyContinue
+	if (!$_nuget) {
+		$_nuget = $_nuget.Source
+	} else {
+		$_nuget = '..\runtime\CSharp\.nuget\NuGet.exe'
+		If (-not (Test-Path $_nuget)) {
+			If (-not (Test-Path '..\runtime\CSharp\.nuget')) {
+				mkdir '..\runtime\CSharp\.nuget'
+			}
+	
+			$_nugetSource = 'https://dist.nuget.org/win-x86-commandline/v5.7.0/nuget.exe'
+			Invoke-WebRequest $_nugetSource -OutFile $_nuget
+			if (-not $?) {
+				Write-Error 'Downloading the nuget package manager failed.'
+				$_nuget = $null
+			}
+		}
+	}
+	if ($null -ne $_nuget) {
+		return $_nuget
+	}
+
+	Write-Error 'Unable to obtain the nuget package manager.'
+	exit 0x11
+}
+
+function GetMsBuildPath() {
+	if (-not [String]::IsNullOrEmpty($VisualStudioVersion)) {
+		$_visualStudio = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7')."$VisualStudioVersion"
+		return "$_visualStudio\MSBuild\$VisualStudioVersion\Bin\MSBuild.exe"
+	}
+	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0' -errorAction SilentlyContinue)
+	if ($null -ne $_key) { 
+		return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe")
+	}
+	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\2.0' -errorAction SilentlyContinue)
+	if ($null -ne $_key) { 
+		return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe")
+	}
+
+	Write-Error 'Unable to obtain the MSBuild tool.'
+	exit 0x12
+}
+
+$Java6Home=GetJavaPath
 
 # Build the Java library using Maven
 If (-not $SkipMaven) {
 	$OriginalPath = $PWD
 
-	cd '..\tool'
+	Set-Location '..\tool'
 	$MavenPath = "$MavenHome\bin\mvn.cmd"
 	If (-not (Test-Path $MavenPath)) {
 		$MavenPath = "$MavenHome\bin\mvn.bat"
 	}
 
 	If (-not (Test-Path $MavenPath)) {
-		$host.ui.WriteErrorLine("Couldn't locate Maven binary: $MavenPath")
-		cd $OriginalPath
-		exit 1
-	}
-
-	If (-not $Java6Home -or -not (Test-Path $Java6Home)) {
-		$host.ui.WriteErrorLine("Couldn't locate Java 6 installation: $Java6Home")
-		cd $OriginalPath
+		Write-Error("Couldn't locate Maven binary: $MavenPath")
+		Set-Location $OriginalPath
 		exit 1
 	}
 
@@ -91,12 +142,12 @@ If (-not $SkipMaven) {
 	$MavenGoal = 'package'
 	&$MavenPath '-B' $MavenRepoArg "-DskipTests=$SkipTestsArg" '--errors' '-e' '-Dgpg.useagent=true' "-Djava6.home=$Java6Home" '-Psonatype-oss-release' $MavenGoal
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Maven build of the C# Target custom Tool failed, aborting!')
-		cd $OriginalPath
+		Write-Error('Maven build of the C# Target custom Tool failed, aborting!')
+		Set-Location $OriginalPath
 		Exit $LASTEXITCODE
 	}
 
-	cd $OriginalPath
+	Set-Location $OriginalPath
 }
 
 # this is configured here for path checking, but also in the .props and .targets files
@@ -104,39 +155,11 @@ If (-not $SkipMaven) {
 $CSharpToolVersionNodeInfo = Select-Xml "/mvn:project/mvn:version" -Namespace @{mvn='http://maven.apache.org/POM/4.0.0'} $pom
 $CSharpToolVersion = $CSharpToolVersionNodeInfo.Node.InnerText.trim()
 
-$nuget = '..\runtime\CSharp\.nuget\NuGet.exe'
-If (-not (Test-Path $nuget)) {
-	If (-not (Test-Path '..\runtime\CSharp\.nuget')) {
-		mkdir '..\runtime\CSharp\.nuget'
-	}
-
-	$nugetSource = 'https://dist.nuget.org/win-x86-commandline/v5.7.0/nuget.exe'
-	Invoke-WebRequest $nugetSource -OutFile $nuget
-	If (-not $?) {
-		$host.ui.WriteErrorLine('Unable to download NuGet executable, aborting!')
-		exit $LASTEXITCODE
-	}
-}
-
-
 # build the main project
-function GetMsBuildPath() {
-	if (-not [String]::IsNullOrEmpty($VisualStudioVersion)) {
-		$visualStudio = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7')."$VisualStudioVersion"
-		return "$visualStudio\MSBuild\$VisualStudioVersion\Bin\MSBuild.exe"
-	}
-	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0' -errorAction SilentlyContinue)
-	if ($null -ne $_key) { return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe") }
-	$_key=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\2.0' -errorAction SilentlyContinue)
-	if ($null -ne $_key) { return [String]::Concat($_key.MSBuildToolsPath, "MSBuild.exe") }
+if ($UseMsBuild) {
+	$msbuild=GetMsBuildPath
+	$visualStudioVersionOption=if($null -eq $VisualStudioVersion) { $null } else { "/p:VisualStudioVersion=$VisualStudioVersion" }
 }
-
-$msbuild=GetMsBuildPath
-If (-not (Test-Path $msbuild)) {
-	$host.UI.WriteErrorLine("Couldn't find MSBuild.exe")
-	exit 1
-}
-$visualStudioVersionOption=if($null -eq $VisualStudioVersion) { $null } else { "/p:VisualStudioVersion=$VisualStudioVersion" }
 
 If ($Logger) {
 	$LoggerArgument = "/logger:$Logger"
@@ -144,13 +167,19 @@ If ($Logger) {
 
 &$nuget 'restore' $SolutionPath -Project2ProjectTimeOut 1200
 if (-not $?) {
-	$host.ui.WriteErrorLine('Restore failed, aborting!')
+	Write-Error('Restore failed, aborting!')
 	Exit $LASTEXITCODE
 }
-
-&$msbuild '/nologo' '/m' '/nr:false' "/t:$Target" $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" $visualStudioVersionOption "/p:KeyConfiguration=$KeyConfiguration" $SolutionPath
+if ($UseMsBuild) {
+	&$msbuild '/nologo' '/m' '/nr:false' "/t:$Target" $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" $visualStudioVersionOption "/p:KeyConfiguration=$KeyConfiguration" $SolutionPath
+} else {
+	if ($NoClean) {
+		dotnet clear "--nologo" $SolutionPath
+	}
+	dotnet build "--nologo" "--verbosity:$Verbosity" "--configuration=$BuildConfig" "/p:KeyConfiguration=$KeyConfiguration" $SolutionPath
+}
 if (-not $?) {
-	$host.ui.WriteErrorLine('Build failed, aborting!')
+	Write-Error('Build failed, aborting!')
 	Exit $LASTEXITCODE
 }
 
@@ -160,7 +189,7 @@ if (-not (Test-Path 'nuget')) {
 
 $JarPath = "..\tool\target\antlr4-csharp-$CSharpToolVersion-complete.jar"
 if (!(Test-Path $JarPath)) {
-	$host.ui.WriteErrorLine("Couldn't locate the complete jar used for building C# parsers: $JarPath")
+	Write-Error("Couldn't locate the complete jar used for building C# parsers: $JarPath")
 	exit 1
 }
 
@@ -185,7 +214,7 @@ $packages = @(
 
 ForEach ($package in $packages) {
 	If (-not (Test-Path ".\$package.nuspec")) {
-		$host.ui.WriteErrorLine("Couldn't locate NuGet package specification: $package")
+		Write-Error("Couldn't locate NuGet package specification: $package")
 		exit 1
 	}
 
@@ -200,14 +229,14 @@ If (-not $NoValidate) {
 	git 'clean' '-dxf' 'DotnetValidationJavaCodegen'
 	dotnet 'run' '--project' '.\DotnetValidationJavaCodegen\DotnetValidation.csproj' '--framework' 'netcoreapp1.1'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	git 'clean' '-dxf' 'DotnetValidationJavaCodegen'
 	dotnet 'run' '--project' '.\DotnetValidationJavaCodegen\DotnetValidation.csproj' '--framework' 'netcoreapp2.1'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
@@ -215,43 +244,43 @@ If (-not $NoValidate) {
 	&$nuget 'restore' 'DotnetValidationJavaCodegen'
 	&$msbuild '/nologo' '/m' '/nr:false' '/t:Rebuild' $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" '.\DotnetValidationJavaCodegen\DotnetValidation.sln'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidationJavaCodegen\bin\$BuildConfig\net20\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidationJavaCodegen\bin\$BuildConfig\net30\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidationJavaCodegen\bin\$BuildConfig\net35\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidationJavaCodegen\bin\$BuildConfig\net40\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidationJavaCodegen\bin\$BuildConfig\portable40-net40+sl5+win8+wp8+wpa81\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidationJavaCodegen\bin\$BuildConfig\net45\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 }
@@ -261,14 +290,14 @@ If (-not $NoValidate) {
 	git 'clean' '-dxf' 'DotnetValidation'
 	dotnet 'run' '--project' '.\DotnetValidation\DotnetValidation.csproj' '--framework' 'netcoreapp1.1'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	git 'clean' '-dxf' 'DotnetValidation'
 	dotnet 'run' '--project' '.\DotnetValidation\DotnetValidation.csproj' '--framework' 'netcoreapp2.1'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
@@ -276,43 +305,43 @@ If (-not $NoValidate) {
 	&$nuget 'restore' 'DotnetValidation'
 	&$msbuild '/nologo' '/m' '/nr:false' '/t:Rebuild' $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" '.\DotnetValidation\DotnetValidation.sln'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidation\bin\$BuildConfig\net20\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidation\bin\$BuildConfig\net30\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidation\bin\$BuildConfig\net35\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidation\bin\$BuildConfig\net40\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidation\bin\$BuildConfig\portable40-net40+sl5+win8+wp8+wpa81\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
 	".\DotnetValidation\bin\$BuildConfig\net45\DotnetValidation.exe"
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 }
@@ -322,7 +351,7 @@ If (-not $NoValidate) {
 	git 'clean' '-dxf' 'DotnetValidationSingleTarget'
 	dotnet 'run' '--project' '.\DotnetValidationSingleTarget\DotnetValidation.csproj' '--framework' 'netcoreapp1.1'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 
@@ -330,7 +359,7 @@ If (-not $NoValidate) {
 	&$nuget 'restore' 'DotnetValidationSingleTarget'
 	&$msbuild '/nologo' '/m' '/nr:false' '/t:Rebuild' $LoggerArgument "/verbosity:$Verbosity" "/p:Configuration=$BuildConfig" '.\DotnetValidationSingleTarget\DotnetValidation.sln'
 	if (-not $?) {
-		$host.ui.WriteErrorLine('Build failed, aborting!')
+		Write-Error('Build failed, aborting!')
 		Exit $LASTEXITCODE
 	}
 }

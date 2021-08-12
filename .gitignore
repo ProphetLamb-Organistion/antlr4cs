@@ -3,6 +3,7 @@
 *.csproj.user
 *.xproj.user
 *.sln.cache
+*.DotSettings.user
 
 # User files related to NuGet project.json
 *.lock.json

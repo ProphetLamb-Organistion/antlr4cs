@@ -4,6 +4,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netstandard2.0;netstandard1.5;net45</TargetFrameworks>
+    <LangVersion>9</LangVersion>
+    <Nullable>annotations</Nullable>
     <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
     <RootNamespace>Antlr4</RootNamespace>
     <AssemblyName>Antlr4</AssemblyName>

@@ -3,15 +3,15 @@
   <metadata minClientVersion="2.7">
     <id>Antlr4.CodeGenerator</id>
     <version>0.0.0</version>
-    <authors>Sam Harwell, Terence Parr</authors>
-    <owners>Sam Harwell</owners>
+    <authors>ProphetLamb, Sam Harwell, Terence Parr</authors>
+    <owners>ProphetLamb</owners>
     <description>The C# target of the ANTLR 4 parser generator for Visual Studio 2010+ projects. This package supports projects targeting .NET 2.0 or newer, and built using Visual Studio 2010 or newer.</description>
     <language>en-us</language>
-    <projectUrl>https://github.com/tunnelvisionlabs/antlr4cs</projectUrl>
-    <licenseUrl>https://raw.github.com/tunnelvisionlabs/antlr4cs/master/LICENSE.txt</licenseUrl>
-    <iconUrl>https://raw.github.com/antlr/website-antlr4/master/images/icons/antlr.png</iconUrl>
-    <copyright>Copyright © Sam Harwell 2015</copyright>
-    <releaseNotes>https://github.com/tunnelvisionlabs/antlr4cs/releases/v$version$</releaseNotes>
+    <projectUrl>https://github.com/ProphetLamb-Organistion/antlr4cs/antlr4cs</projectUrl>
+    <license type="file">assets\LICENSE.txt</license>
+    <icon>assets\antlr.png</icon>
+    <copyright>Copyright © ProphetLamb 2021</copyright>
+    <releaseNotes>https://github.com/ProphetLamb-Organistion/antlr4cs/releases/v$version$</releaseNotes>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <developmentDependency>true</developmentDependency>
     <tags>antlr antlr4 parsing</tags>
@@ -30,11 +30,11 @@
     <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net45\Antlr3.Runtime.dll" target="tools\net45" />
     <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net45\Tool\**\*.stg" target="tools\net45\Tool" />
 
-    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr4.dll" target="tools\netstandard1.5" />
-    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr4.Runtime.dll" target="tools\netstandard1.5" />
-    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr4.StringTemplate.dll" target="tools\netstandard1.5" />
-    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr3.Runtime.dll" target="tools\netstandard1.5" />
-    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Tool\**\*.stg" target="tools\netstandard1.5\Tool" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr4.dll" target="tools\netstandard2.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr4.Runtime.dll" target="tools\netstandard2.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr4.StringTemplate.dll" target="tools\netstandard2.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Antlr3.Runtime.dll" target="tools\netstandard2.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard1.5\Tool\**\*.stg" target="tools\netstandard2.0\Tool" />
 
     <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.0\Antlr4.dll" target="tools\netstandard2.0" />
     <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.0\Antlr4.Runtime.dll" target="tools\netstandard2.0" />
@@ -42,19 +42,40 @@
     <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.0\Antlr3.Runtime.dll" target="tools\netstandard2.0" />
     <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.0\Tool\**\*.stg" target="tools\netstandard2.0\Tool" />
 
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.1\Antlr4.dll" target="tools\netstandard2.1" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.1\Antlr4.Runtime.dll" target="tools\netstandard2.1" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.1\Antlr4.StringTemplate.dll" target="tools\netstandard2.1" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.1\Antlr3.Runtime.dll" target="tools\netstandard2.1" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\netstandard2.1\Tool\**\*.stg" target="tools\netstandard2.1\Tool" />
+
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net50\Antlr4.dll" target="tools\net5.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net50\Antlr4.Runtime.dll" target="tools\net5.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net50\Antlr4.StringTemplate.dll" target="tools\net5.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net50\Antlr3.Runtime.dll" target="tools\net5.0" />
+    <file src="..\runtime\CSharp\Antlr4.Tool\bin\$Configuration$\net50\Tool\**\*.stg" target="tools\net5.0\Tool" />
+
     <!-- Build Configuration -->
 
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4.CodeGenerator.DefaultItems.props" target="build"/>
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4.CodeGenerator.DefaultItems.targets" target="build"/>
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4.CodeGenerator.props" target="build"/>
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4.CodeGenerator.targets" target="build"/>
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4.ProjectItemsSchema.xml" target="build\Rules"/>
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4.xml" target="build\Rules"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4.CodeGenerator.DefaultItems.props" target="build"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4.CodeGenerator.DefaultItems.targets" target="build"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4.CodeGenerator.props" target="build"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4.CodeGenerator.targets" target="build"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4.ProjectItemsSchema.xml" target="build\Rules"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4.xml" target="build\Rules"/>
 
     <!-- Build Tasks -->
 
-    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net40\Antlr4BuildTasks.dll" target="tools\net40"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net45\Antlr4BuildTasks.dll" target="tools\net40"/>
     <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\netstandard1.5\Antlr4BuildTasks.dll" target="tools\netstandard1.5"/>
     <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\netstandard2.0\Antlr4BuildTasks.dll" target="tools\netstandard2.0"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\netstandard2.1\Antlr4BuildTasks.dll" target="tools\netstandard2.1"/>
+    <file src="..\runtime\CSharp\Antlr4BuildTasks\bin\$Configuration$\net50\Antlr4BuildTasks.dll" target="tools\net5.0"/>
+
+    <!-- Assets -->
+    
+    <file src="..\LICENSE.txt" target="assets\"/>
+    <file src="..\images\icons\antlr.png" target="assets\"/>
+    <file src="..\Readme.md" target="assets\"/>
+    <file src="..\THIRD-PARTY-NOTICES.txt" target="assets\"/>
   </files>
 </package>
