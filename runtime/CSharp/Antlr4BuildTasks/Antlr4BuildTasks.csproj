@@ -2,9 +2,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard1.5;net40</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net45;net50</TargetFrameworks>
     <LangVersion>9</LangVersion>
-    <Nullable>annotations</Nullable>
     <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
 
     <RootNamespace>Antlr4.Build.Tasks</RootNamespace>
@@ -22,7 +21,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
-    <CodeAnalysisRuleSet>ExtendedDesignGuidelineRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -40,20 +38,26 @@
         <ProjectReference Include="..\Antlr4.Tool\Antlr4.Tool.csproj" />
       </ItemGroup>
     </When>
-    <When Condition="'$(TargetFramework)' == 'netstandard1.5'">
+    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
       <ItemGroup>
-        <PackageReference Include="Microsoft.Build.Framework" Version="14.3" />
-        <PackageReference Include="Microsoft.Build.Tasks.Core" Version="14.3" />
+        <PackageReference Include="Microsoft.Build.Framework" Version="15.7.179" />
+        <PackageReference Include="Microsoft.Build.Tasks.Core" Version="15.7.179" />
       </ItemGroup>
       <ItemGroup>
         <ProjectReference Include="..\Antlr4.Tool\Antlr4.Tool.csproj" />
       </ItemGroup>
     </When>
-    <When Condition="'$(TargetFramework)' == 'net40'">
+    <When Condition="'$(TargetFramework)' == 'net45'">
       <ItemGroup>
         <Reference Include="Microsoft.Build.Framework" />
         <Reference Include="Microsoft.Build.Tasks.v4.0" />
         <Reference Include="Microsoft.Build.Utilities.v4.0" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net50'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Build.Framework" Version="16.10.0" />
+        <PackageReference Include="Microsoft.Build.Tasks.Core" Version="16.10.0" />
       </ItemGroup>
     </When>
   </Choose>

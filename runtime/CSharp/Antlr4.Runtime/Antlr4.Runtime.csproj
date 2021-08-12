@@ -63,6 +63,22 @@
       
       <ItemGroup>
         <PackageReference Include="System.Reflection" Version="4.3.0" />
+        <PackageReference Include="Microsoft.Win32.Registry" Version="4.0.0" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Win32.Registry" Version="4.0.0" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netstandard2.1'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Win32.Registry" Version="4.0.0" />
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net50'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Win32.Registry" Version="4.0.0" />
       </ItemGroup>
     </When>
   </Choose>

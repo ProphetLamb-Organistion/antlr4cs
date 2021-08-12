@@ -7,7 +7,6 @@
     <!-- Note: netcoreapp3.1 is used for testing the netstandard2.1 target. -->
     <TargetFrameworks>net45;net452;net472;netcoreapp3.1;net50</TargetFrameworks>
     <LangVersion>9</LangVersion>
-    <Nullable>annotations</Nullable>
     <EnableDefaultNoneItems>False</EnableDefaultNoneItems>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 
@@ -26,58 +25,46 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
-<!--  <Choose>-->
-<!--    <When Condition="'$(TargetFramework)' == 'net45'">-->
-<!--      <PropertyGroup>-->
-<!--        <DefineConstants>$(DefineConstants);NET45;NET45PLUS;NET40PLUS;NET35PLUS;NET30PLUS;NET20PLUS</DefineConstants>-->
-<!--      </PropertyGroup>-->
-<!--      <ItemGroup>-->
-<!--        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">-->
-<!--          <SetTargetFramework>TargetFramework=net45</SetTargetFramework>-->
-<!--        </ProjectReference>-->
-<!--      </ItemGroup>-->
-<!--    </When>-->
-<!--    <When Condition="'$(TargetFramework)' == 'net452'">-->
-<!--      <PropertyGroup>-->
-<!--        <DefineConstants>$(DefineConstants);PORTABLE;NET45;NET45PLUS;NET40PLUS;NET35PLUS;NET30PLUS;NET20PLUS</DefineConstants>-->
-<!--      </PropertyGroup>-->
-<!--      <ItemGroup>-->
-<!--        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">-->
-<!--          <SetTargetFramework>TargetFramework=netstandard1.5</SetTargetFramework>-->
-<!--        </ProjectReference>-->
-<!--      </ItemGroup>-->
-<!--    </When>-->
-<!--    <When Condition="'$(TargetFramework)' == 'net472'">-->
-<!--      <PropertyGroup>-->
-<!--        <DefineConstants>$(DefineConstants);NET45;NET45PLUS;NET40PLUS;NET35PLUS;NET30PLUS;NET20PLUS</DefineConstants>-->
-<!--      </PropertyGroup>-->
-<!--      <ItemGroup>-->
-<!--        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">-->
-<!--          <SetTargetFramework>TargetFramework=netstandard2.0</SetTargetFramework>-->
-<!--        </ProjectReference>-->
-<!--      </ItemGroup>-->
-<!--    </When>-->
-<!--    <When Condition="'$(TargetFramework)' == 'netcoreapp3.1'">-->
-<!--      <PropertyGroup>-->
-<!--        <DefineConstants>$(DefineConstants);NET45;NET45PLUS;NET40PLUS;NET35PLUS;NET30PLUS;NET20PLUS</DefineConstants>-->
-<!--      </PropertyGroup>-->
-<!--      <ItemGroup>-->
-<!--        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">-->
-<!--          <SetTargetFramework>TargetFramework=netstandard2.1</SetTargetFramework>-->
-<!--        </ProjectReference>-->
-<!--      </ItemGroup>-->
-<!--    </When>-->
-<!--    <When Condition="'$(TargetFramework)' == 'net50'">-->
-<!--      <PropertyGroup>-->
-<!--        <DefineConstants>$(DefineConstants);NET45;NET45PLUS;NET40PLUS;NET35PLUS;NET30PLUS;NET20PLUS</DefineConstants>-->
-<!--      </PropertyGroup>-->
-<!--      <ItemGroup>-->
-<!--        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">-->
-<!--          <SetTargetFramework>TargetFramework=net50</SetTargetFramework>-->
-<!--        </ProjectReference>-->
-<!--      </ItemGroup>-->
-<!--    </When>-->
-<!--  </Choose>-->
+  <Choose>
+    <When Condition="'$(TargetFramework)' == 'net45'">
+      <ItemGroup>
+        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">
+          <SetTargetFramework>TargetFramework=net45</SetTargetFramework>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net452'">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);PORTABLE</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">
+          <SetTargetFramework>TargetFramework=netstandard1.5</SetTargetFramework>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net472'">
+      <ItemGroup>
+        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">
+          <SetTargetFramework>TargetFramework=netstandard2.0</SetTargetFramework>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+      <ItemGroup>
+        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">
+          <SetTargetFramework>TargetFramework=netstandard2.1</SetTargetFramework>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(TargetFramework)' == 'net50'">
+      <ItemGroup>
+        <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj">
+          <SetTargetFramework>TargetFramework=net50</SetTargetFramework>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+  </Choose>
 
   <PropertyGroup>
     <Antlr4UseCSharpGenerator>True</Antlr4UseCSharpGenerator>
@@ -133,10 +120,6 @@
 
   <ItemGroup>
     <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Antlr4.Runtime\Antlr4.Runtime.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,10 +6,8 @@ namespace Antlr4.Build.Tasks
     using System;
     using System.Diagnostics;
     using System.Text.RegularExpressions;
-
-#if !NETSTANDARD1_5
+    
     [Serializable]
-#endif
     internal struct BuildMessage
     {
         private static readonly Regex BuildMessageFormat = new Regex(@"^\s*(?<SEVERITY>[a-z]+)\((?<CODE>[0-9]+)\):\s*((?<FILE>.*):(?<LINE>[0-9]+):(?<COLUMN>[0-9]+):)?\s*(?:syntax error:\s*)?(?<MESSAGE>.*)$", RegexOptions.Compiled);
@@ -40,7 +38,7 @@ namespace Antlr4.Build.Tasks
                     }
 
                     int code = int.Parse(match.Groups["CODE"].Value);
-                    Message = string.Format("AC{0:0000}: {1}", code, match.Groups["MESSAGE"].Value);
+                    Message = $"AC{code:0000}: {match.Groups["MESSAGE"].Value}";
                 }
                 else
                 {
